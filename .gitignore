@@ -33,3 +33,28 @@ replay_pid*
 # Docker volumes
 docker/volumes/*/data/
 
+# Local env / secrets
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.p12
+*.jks
+
+# Local init data (contains default accounts)
+sql/initial/02_init_data.sql
+
+# Local runtime artifacts
+logs/
+log/
+*.pid
+
+# Docker Compose local overrides
+docker-compose.override.yml
+docker-compose.*.yml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
