@@ -6,10 +6,15 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.langchain4j.agent.tool.Tool;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
 import top.aiolife.core.query.CommonQuery;
+import top.aiolife.core.constant.ResponseCodeConst;
 import top.aiolife.core.resq.ApiResponse;
 import top.aiolife.core.resq.PageResp;
 import top.aiolife.mcp.annotation.McpOperation;
+import top.aiolife.config.MinioConfig;
+import top.aiolife.core.util.MinioUtil;
 import top.aiolife.record.mapper.IRelaEventMapper;
 import top.aiolife.record.mapper.IThoughtMapper;
 import top.aiolife.record.pojo.entity.ThoughtRelaEventEntity;
@@ -17,30 +22,73 @@ import top.aiolife.record.pojo.entity.ThoughtEntity;
 import top.aiolife.record.pojo.req.CommonReq;
 import top.aiolife.record.pojo.req.ThoughtSaveEventReq;
 import top.aiolife.record.pojo.req.ThoughtSaveReq;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 /**
- * 类功能描述
+ * 闪念（思考）接口
  *
- * @author Lys
- * @date 2025-11-16 17:01
+ * @author Ethan
  */
 @Slf4j
 @RestController
-@AllArgsConstructor
+@RequiredArgsConstructor
 @RequestMapping("/thought")
 public class ThoughtController {
     private final IThoughtMapper thoughtMapper;
 
     private final IRelaEventMapper relaEventMapper;
+
+    private final MinioUtil minioUtil;
+
+    private final MinioConfig minioConfig;
+
+    @Value("${aio.life.serve.base-url}")
+    private String serveBaseUrl;
+
+    private static final Set<String> ALLOWED_THEME_KEYS = Set.of(
+            "blue", "cyan", "green", "purple", "pink", "orange"
+    );
+
+    private static final Set<String> ALLOWED_STATUSES = Set.of(
+            "pending", "ongoing", "done", "archived"
+    );
+
+    private static String normalizeStatus(String status) {
+        if (status == null) {
+            return null;
+        }
+        String trimmed = status.trim();
+        if (trimmed.isBlank()) {
+            return null;
+        }
+        String lower = trimmed.toLowerCase();
+        if (ALLOWED_STATUSES.contains(lower)) {
+            return lower;
+        }
+        return switch (trimmed) {
+            case "待处理" -> "pending";
+            case "进行中" -> "ongoing";
+            case "已完成" -> "done";
+            case "已归档" -> "archived";
+            default -> null;
+        };
+    }
 
     public IThoughtMapper getBaseMapper() {
         return thoughtMapper;
@@ -53,6 +101,20 @@ public class ThoughtController {
         LambdaQueryWrapper<ThoughtEntity> lambdaQueryWrapper = new LambdaQueryWrapper<>();
         lambdaQueryWrapper.eq(ThoughtEntity::getUserId, userId);
         ThoughtEntity condition = query.getCondition();
+        if (condition != null) {
+            String themeKey = condition.getThemeKey();
+            if (themeKey != null) {
+                String trimmed = themeKey.trim();
+                if (!trimmed.isBlank() && ALLOWED_THEME_KEYS.contains(trimmed)) {
+                    lambdaQueryWrapper.eq(ThoughtEntity::getThemeKey, trimmed);
+                }
+            }
+
+            String normalizedStatus = normalizeStatus(condition.getStatus());
+            if (normalizedStatus != null) {
+                lambdaQueryWrapper.eq(ThoughtEntity::getStatus, normalizedStatus);
+            }
+        }
 
         lambdaQueryWrapper.orderByDesc(ThoughtEntity::getUpdateTime);
         Page<ThoughtEntity> page = new Page<>(query.getPage(), query.getPageSize());
@@ -85,9 +147,29 @@ public class ThoughtController {
     )
     public ApiResponse<Boolean> save(@RequestBody ThoughtSaveReq req) {
         Long loginId = StpUtil.getLoginIdAsLong();
+        String subject = req.getSubject() == null ? null : req.getSubject().trim();
+        if (subject == null || subject.isBlank()) {
+            String content = req.getContent() == null ? "" : req.getContent().trim();
+            String firstLine = content.split("\\R", 2)[0].trim();
+            subject = firstLine.isBlank() ? null : (firstLine.length() > 60 ? firstLine.substring(0, 60) : firstLine);
+        }
+        if (subject == null) {
+            return ApiResponse.error("主题内容不能为空");
+        }
         ThoughtEntity entity = new ThoughtEntity();
+        entity.setSubject(subject);
         entity.setContent(req.getContent());
         entity.setUserId(loginId);
+        String themeKey = req.getThemeKey();
+        if (themeKey != null && ALLOWED_THEME_KEYS.contains(themeKey)) {
+            entity.setThemeKey(themeKey);
+        }
+        String normalizedStatus = normalizeStatus(req.getStatus());
+        if (normalizedStatus != null) {
+            entity.setStatus(normalizedStatus);
+        } else {
+            entity.setStatus("pending");
+        }
         entity.setCreateUser(loginId);
         entity.setUpdateTime(LocalDateTime.now());
         getBaseMapper().insert(entity);
@@ -108,6 +190,28 @@ public class ThoughtController {
         Long userId = StpUtil.getLoginIdAsLong();
         entity.setUserId(userId);
         entity.setUpdateTime(LocalDateTime.now());
+
+        String subject = entity.getSubject() == null ? null : entity.getSubject().trim();
+        if (subject == null || subject.isBlank()) {
+            String content = entity.getContent() == null ? "" : entity.getContent().trim();
+            String firstLine = content.split("\\R", 2)[0].trim();
+            subject = firstLine.isBlank() ? null : (firstLine.length() > 60 ? firstLine.substring(0, 60) : firstLine);
+        }
+        if (subject != null) {
+            entity.setSubject(subject);
+        }
+
+        String themeKey = entity.getThemeKey();
+        if (themeKey != null && !ALLOWED_THEME_KEYS.contains(themeKey)) {
+            entity.setThemeKey(null);
+        }
+
+        String normalizedStatus = normalizeStatus(entity.getStatus());
+        if (entity.getStatus() != null && normalizedStatus == null) {
+            entity.setStatus(null);
+        } else if (normalizedStatus != null) {
+            entity.setStatus(normalizedStatus);
+        }
         
         LambdaQueryWrapper<ThoughtEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ThoughtEntity::getId, entity.getId());
@@ -117,13 +221,70 @@ public class ThoughtController {
         
         if (rows > 0) {
             // 更新事件
-            entity.getEvents().forEach(eventEntity -> {
-                eventEntity.setThoughtId(entity.getId());
-                relaEventMapper.insertOrUpdate(eventEntity);
-            });
+            List<ThoughtRelaEventEntity> events = entity.getEvents();
+            if (events != null) {
+                events.forEach(eventEntity -> {
+                    eventEntity.setThoughtId(entity.getId());
+                    relaEventMapper.insertOrUpdate(eventEntity);
+                });
+            }
             return ApiResponse.success(true);
         }
         return ApiResponse.error("无权操作或记录不存在");
+    }
+
+    /**
+     * 上传闪念卡图片。
+     *
+     * <p>用途：前端为某条闪念上传卡片图片，后端将图片写入 MinIO，并把对象键保存到 thought.card_object。</p>
+     *
+     * @param id 闪念 ID
+     * @param file 图片文件（multipart/form-data，字段名为 file）
+     * @return 统一返回结构，data 包含 cardObject 与 cardUrl
+     */
+    @PostMapping("/{id}/card/upload")
+    public ApiResponse<Map<String, Object>> uploadCard(@PathVariable("id") Long id, @RequestParam("file") MultipartFile file) {
+        if (id == null) {
+            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "id 不能为空");
+        }
+        if (file == null || file.isEmpty()) {
+            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "文件不能为空");
+        }
+        String contentType = file.getContentType();
+        if (!StringUtils.hasText(contentType) || !contentType.startsWith("image/")) {
+            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "仅支持图片文件");
+        }
+        long userId = StpUtil.getLoginIdAsLong();
+        ThoughtEntity exist = thoughtMapper.selectById(id);
+        if (exist == null || !Objects.equals(exist.getIsDeleted(), 0) || !Objects.equals(exist.getUserId(), userId)) {
+            return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, "无权操作或记录不存在");
+        }
+
+        String ext = detectExt(file.getOriginalFilename(), contentType);
+        String filename = UUID.randomUUID().toString().replace("-", "") + "." + ext;
+        String objectName = "think-card/" + id + "/" + filename;
+        String bucketName = StringUtils.hasText(minioConfig.getBucketName()) ? minioConfig.getBucketName() : "aiolife";
+
+        try {
+            minioUtil.uploadFile(bucketName, file, objectName);
+
+            ThoughtEntity update = new ThoughtEntity();
+            update.setCardObject(objectName);
+            update.fillUpdateCommonField(userId);
+
+            LambdaUpdateWrapper<ThoughtEntity> wrapper = new LambdaUpdateWrapper<>();
+            wrapper.eq(ThoughtEntity::getId, id);
+            wrapper.eq(ThoughtEntity::getUserId, userId);
+            wrapper.eq(ThoughtEntity::getIsDeleted, 0);
+            thoughtMapper.update(update, wrapper);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("cardObject", objectName);
+            data.put("cardUrl", serveBaseUrl + "/file/preview/" + bucketName + "/" + objectName);
+            return ApiResponse.success(data);
+        } catch (Exception e) {
+            return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, "上传失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -136,6 +297,28 @@ public class ThoughtController {
         lambdaUpdateWrapper.in(ThoughtEntity::getId, CommonReq.getIdList());
         getBaseMapper().delete(lambdaUpdateWrapper);
         return ApiResponse.success(true);
+    }
+
+    private String detectExt(String filename, String contentType) {
+        if (StringUtils.hasText(filename) && filename.contains(".")) {
+            String ext = filename.substring(filename.lastIndexOf('.') + 1).trim().toLowerCase();
+            if (StringUtils.hasText(ext)) {
+                return ext;
+            }
+        }
+        if (Objects.equals("image/jpeg", contentType)) {
+            return "jpg";
+        }
+        if (Objects.equals("image/png", contentType)) {
+            return "png";
+        }
+        if (Objects.equals("image/gif", contentType)) {
+            return "gif";
+        }
+        if (Objects.equals("image/webp", contentType)) {
+            return "webp";
+        }
+        return "png";
     }
 
 }

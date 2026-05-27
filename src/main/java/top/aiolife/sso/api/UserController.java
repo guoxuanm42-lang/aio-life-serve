@@ -4,8 +4,10 @@ import cn.dev33.satoken.stp.StpUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import top.aiolife.config.MinioConfig;
 import top.aiolife.core.constant.ResponseCodeConst;
 import top.aiolife.core.resq.ApiResponse;
 import top.aiolife.core.util.MinioUtil;
@@ -33,6 +35,7 @@ public class UserController {
 
     private final IUserService userService;
     private final MinioUtil minioUtil;
+    private final MinioConfig minioConfig;
 
     @Value("${aio.life.serve.base-url}")
     private String serveBaseUrl;
@@ -140,8 +143,9 @@ public class UserController {
         try {
             // 生成唯一文件名
             String fileName = minioUtil.generateUniqueFileName(file.getOriginalFilename());
-            String objectName = StpUtil.getLoginIdAsLong() + "/" + fileName;
-            String bucketName = "avatar";
+            long userId = StpUtil.getLoginIdAsLong();
+            String objectName = "avatar/" + userId + "/" + fileName;
+            String bucketName = StringUtils.hasText(minioConfig.getBucketName()) ? minioConfig.getBucketName() : "aiolife";
             minioUtil.uploadFile(bucketName, file, objectName);
             
             // 构建完整的文件访问URL

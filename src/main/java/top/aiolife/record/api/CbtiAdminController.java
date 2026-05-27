@@ -6,29 +6,22 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-import top.aiolife.config.CbtiConfig;
-import top.aiolife.config.MinioConfig;
 import top.aiolife.core.constant.ResponseCodeConst;
 import top.aiolife.core.resq.ApiResponse;
-import top.aiolife.core.util.MinioUtil;
 import top.aiolife.record.mapper.ICbtiPersonalityMapper;
 import top.aiolife.record.pojo.entity.CbtiPersonalityEntity;
 import top.aiolife.record.pojo.req.CbtiPersonalitySaveReq;
 import top.aiolife.record.pojo.vo.CbtiPersonalityAdminVO;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /**
  * CBTI 人格管理控制器
  *
- * <p>用途：管理员对 CBTI 人格类型进行新增/编辑/删除，并上传/替换角色图片。</p>
+ * <p>用途：管理员对 CBTI 人格类型进行新增/编辑/删除。</p>
  *
  * @author Ethan
  * @date 2026/04/19
@@ -43,19 +36,10 @@ public class CbtiAdminController {
 
     private final ObjectMapper objectMapper;
 
-    private final MinioUtil minioUtil;
-
-    private final MinioConfig minioConfig;
-
-    private final CbtiConfig cbtiConfig;
-
-    @Value("${aio.life.serve.base-url}")
-    private String serveBaseUrl;
-
     /**
      * 获取 CBTI 人格列表（管理端）。
      *
-     * @return 统一返回结构，data 为人格列表（含 imageUrl）
+     * @return 统一返回结构，data 为人格列表
      */
     @GetMapping("/personalities")
     public ApiResponse<List<CbtiPersonalityAdminVO>> list() {
@@ -152,55 +136,6 @@ public class CbtiAdminController {
         return ApiResponse.success(true);
     }
 
-    /**
-     * 上传/替换 CBTI 人格图片。
-     *
-     * <p>用途：管理员为指定人格 code 上传图片，服务端按 code 固定命名并覆盖同名对象。</p>
-     *
-     * @param code 人格代码
-     * @param file 上传图片文件（multipart/form-data，字段名为 file）
-     * @return 统一返回结构，data 包含 imageObject 与 imageUrl
-     */
-    @PostMapping("/personalities/{code}/image")
-    public ApiResponse<Map<String, Object>> uploadImage(@PathVariable String code, @RequestParam("file") MultipartFile file) {
-        if (!StringUtils.hasText(code)) {
-            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "code 不能为空");
-        }
-        if (file == null || file.isEmpty()) {
-            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "文件不能为空");
-        }
-        String contentType = file.getContentType();
-        if (!StringUtils.hasText(contentType) || !contentType.startsWith("image/")) {
-            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "仅支持图片文件");
-        }
-
-        String normalizedCode = normalizeCode(code);
-        CbtiPersonalityEntity exist = getByCode(normalizedCode);
-        if (exist == null) {
-            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "人格不存在");
-        }
-
-        String ext = detectExt(file.getOriginalFilename(), contentType);
-        String objectPrefix = normalizePrefix(cbtiConfig.getObjectPrefix());
-        String objectName = objectPrefix + normalizedCode + "." + ext;
-        String bucketName = resolveBucketName();
-
-        try {
-            minioUtil.uploadFile(bucketName, file, objectName);
-            long userId = StpUtil.getLoginIdAsLong();
-            exist.setImageObject(objectName);
-            exist.fillUpdateCommonField(userId);
-            cbtiPersonalityMapper.updateById(exist);
-
-            Map<String, Object> data = new HashMap<>();
-            data.put("imageObject", objectName);
-            data.put("imageUrl", buildPreviewUrl(bucketName, objectName));
-            return ApiResponse.success(data);
-        } catch (Exception e) {
-            return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, "上传失败: " + e.getMessage());
-        }
-    }
-
     private void validateSaveReq(CbtiPersonalitySaveReq req, boolean isUpdate) {
         if (req == null) {
             throw new IllegalArgumentException("请求体不能为空");
@@ -280,12 +215,6 @@ public class CbtiAdminController {
         }));
         vo.setWeaknesses(readJsonSafely(entity.getWeaknesses(), new TypeReference<List<String>>() {
         }));
-
-        String objectName = entity.getImageObject();
-        if (StringUtils.hasText(objectName)) {
-            String bucketName = resolveBucketName();
-            vo.setImageUrl(buildPreviewUrl(bucketName, objectName));
-        }
         return vo;
     }
 
@@ -300,50 +229,7 @@ public class CbtiAdminController {
         }
     }
 
-    private String resolveBucketName() {
-        if (StringUtils.hasText(cbtiConfig.getBucketName())) {
-            return cbtiConfig.getBucketName();
-        }
-        if (minioConfig != null && StringUtils.hasText(minioConfig.getBucketName())) {
-            return minioConfig.getBucketName();
-        }
-        return "aiolife";
-    }
-
-    private String normalizePrefix(String prefix) {
-        String p = StringUtils.hasText(prefix) ? prefix : "images/cbti/characters/";
-        p = p.startsWith("/") ? p.substring(1) : p;
-        return p.endsWith("/") ? p : p + "/";
-    }
-
     private String normalizeCode(String code) {
         return StringUtils.hasText(code) ? code.trim() : null;
-    }
-
-    private String buildPreviewUrl(String bucketName, String objectName) {
-        String normalized = objectName.startsWith("/") ? objectName.substring(1) : objectName;
-        return serveBaseUrl + "/file/preview/" + bucketName + "/" + normalized;
-    }
-
-    private String detectExt(String filename, String contentType) {
-        if (StringUtils.hasText(filename) && filename.contains(".")) {
-            String ext = filename.substring(filename.lastIndexOf('.') + 1).trim().toLowerCase();
-            if (StringUtils.hasText(ext)) {
-                return ext;
-            }
-        }
-        if (Objects.equals("image/jpeg", contentType)) {
-            return "jpg";
-        }
-        if (Objects.equals("image/png", contentType)) {
-            return "png";
-        }
-        if (Objects.equals("image/gif", contentType)) {
-            return "gif";
-        }
-        if (Objects.equals("image/webp", contentType)) {
-            return "webp";
-        }
-        return "png";
     }
 }

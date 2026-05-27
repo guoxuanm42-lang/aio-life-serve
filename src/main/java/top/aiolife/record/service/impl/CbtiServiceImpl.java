@@ -196,7 +196,6 @@ public class CbtiServiceImpl implements ICbtiService {
                 item.put("name", p.getName());
                 item.put("motto", p.getMotto());
                 item.put("color", p.getColor());
-                item.put("imageObject", p.getImageObject());
                 item.put("isSpecial", Objects.equals(p.getIsSpecial(), 1));
             }
             result.add(item);

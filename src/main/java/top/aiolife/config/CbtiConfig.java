@@ -21,7 +21,7 @@ public class CbtiConfig {
 
     private String bucketName;
 
-    private String objectPrefix = "images/cbti/characters/";
+    private String objectPrefix = "cbti/";
 
     private String charactersDir;
 }

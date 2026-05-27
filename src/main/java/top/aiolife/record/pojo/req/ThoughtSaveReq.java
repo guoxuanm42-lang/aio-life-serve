@@ -1,19 +1,26 @@
 package top.aiolife.record.pojo.req;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 
 import java.util.List;
 
 /**
- * 想法保存请求体
+ * 思考（闪念）保存请求体
  *
- * @author GPT
- * @date 2026/04/25
+ * @author Ethan
  */
 @Data
 public class ThoughtSaveReq {
 
+    @JsonAlias({"topic"})
+    private String subject;
+
     private String content;
+
+    private String themeKey;
+
+    private String status;
 
     private List<ThoughtSaveEventReq> events;
 }
