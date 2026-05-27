@@ -4,10 +4,8 @@ import cn.dev33.satoken.stp.StpUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
-import top.aiolife.config.CbtiConfig;
 import top.aiolife.core.constant.ResponseCodeConst;
 import top.aiolife.core.resq.ApiResponse;
 import top.aiolife.record.pojo.entity.CbtiPersonalityEntity;
@@ -34,14 +32,6 @@ public class CbtiController {
     private final ICbtiService cbtiService;
 
     private final ObjectMapper objectMapper;
-
-    private final CbtiConfig cbtiConfig;
-
-    @Value("${aio.life.serve.base-url}")
-    private String serveBaseUrl;
-
-    @Value("${aio.life.serve.minio.bucket-name:aiolife}")
-    private String minioBucketName;
 
     /**
      * 获取 CBTI 题库与维度定义接口。
@@ -137,12 +127,6 @@ public class CbtiController {
     public ApiResponse<List<Map<String, Object>>> results() {
         long userId = StpUtil.getLoginIdAsLong();
         List<Map<String, Object>> list = cbtiService.getUserHistory(userId);
-        for (Map<String, Object> item : list) {
-            Object obj = item.get("imageObject");
-            if (obj instanceof String objectName && StringUtils.hasText(objectName)) {
-                item.put("imageUrl", buildPreviewUrl(objectName));
-            }
-        }
         return ApiResponse.success(list);
     }
 
@@ -195,9 +179,6 @@ public class CbtiController {
         p.put("spirit", entity.getSpirit());
         p.put("isSpecial", Objects.equals(entity.getIsSpecial(), 1));
         p.put("imageObject", entity.getImageObject());
-        if (StringUtils.hasText(entity.getImageObject())) {
-            p.put("imageUrl", buildPreviewUrl(entity.getImageObject()));
-        }
         p.put("vector", readJsonSafely(entity.getVector()));
         p.put("strengths", readJsonSafely(entity.getStrengths()));
         p.put("weaknesses", readJsonSafely(entity.getWeaknesses()));
@@ -213,11 +194,5 @@ public class CbtiController {
         } catch (Exception e) {
             return json;
         }
-    }
-
-    private String buildPreviewUrl(String objectName) {
-        String normalized = objectName.startsWith("/") ? objectName.substring(1) : objectName;
-        String bucketName = StringUtils.hasText(cbtiConfig.getBucketName()) ? cbtiConfig.getBucketName() : minioBucketName;
-        return serveBaseUrl + "/file/preview/" + bucketName + "/" + normalized;
     }
 }
