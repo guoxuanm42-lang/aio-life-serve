@@ -33,3 +33,6 @@ replay_pid*
 # Docker volumes
 docker/volumes/*/data/
 
+# Local initial data (ignore to avoid environment-specific drift)
+/sql/initial
+
