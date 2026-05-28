@@ -86,6 +86,10 @@ public class RedisUtil {
         stringRedisTemplate.opsForValue().set(key, value, timeout, unit);
     }
 
+    public Boolean setIfAbsent(String key, String value, long timeout, TimeUnit unit) {
+        return stringRedisTemplate.opsForValue().setIfAbsent(key, value, timeout, unit);
+    }
+
     /**
      * 判断是否存在key
      *

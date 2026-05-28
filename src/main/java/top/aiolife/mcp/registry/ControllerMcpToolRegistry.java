@@ -30,6 +30,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ControllerMcpToolRegistry {
 
+    private static final String MCP_TOOL_CONTROLLER_PACKAGE_PREFIX = "top.aiolife.mcp.api";
+
     private final org.springframework.context.ApplicationContext applicationContext;
     private final LangChain4jToolSchemaAdapter schemaAdapter;
 
@@ -37,8 +39,17 @@ public class ControllerMcpToolRegistry {
 
     @PostConstruct
     public void init() {
-        Map<String, Object> controllerBeans = applicationContext.getBeansWithAnnotation(RestController.class);
-        controllerBeans.values().forEach(this::registerControllerTools);
+        String[] beanNames = applicationContext.getBeanNamesForAnnotation(RestController.class);
+        for (String beanName : beanNames) {
+            Class<?> type = applicationContext.getType(beanName);
+            if (type == null || type.getPackage() == null) {
+                continue;
+            }
+            if (!type.getPackage().getName().startsWith(MCP_TOOL_CONTROLLER_PACKAGE_PREFIX)) {
+                continue;
+            }
+            registerControllerTools(applicationContext.getBean(beanName));
+        }
         log.info("MCP 工具注册完成，共 {} 个", registeredTools.size());
     }
 

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import top.aiolife.system.mapper.ISysMenuMapper;
 import top.aiolife.system.pojo.entity.SysMenuEntity;
@@ -89,6 +90,7 @@ public class MenuServiceImpl implements IMenuService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public MenuAdminVO updateStatus(long id, int status, long userId) throws Exception {
         if (status != 0 && status != 1) {
             throw new IllegalArgumentException("status 只能为 0 或 1");
