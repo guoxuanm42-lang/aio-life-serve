@@ -5,14 +5,12 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import dev.langchain4j.agent.tool.Tool;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 import top.aiolife.core.query.CommonQuery;
 import top.aiolife.core.constant.ResponseCodeConst;
 import top.aiolife.core.resq.ApiResponse;
 import top.aiolife.core.resq.PageResp;
-import top.aiolife.mcp.annotation.McpOperation;
 import top.aiolife.config.MinioConfig;
 import top.aiolife.core.util.MinioUtil;
 import top.aiolife.record.mapper.IRelaEventMapper;
@@ -20,8 +18,8 @@ import top.aiolife.record.mapper.IThoughtMapper;
 import top.aiolife.record.pojo.entity.ThoughtRelaEventEntity;
 import top.aiolife.record.pojo.entity.ThoughtEntity;
 import top.aiolife.record.pojo.req.CommonReq;
-import top.aiolife.record.pojo.req.ThoughtSaveEventReq;
 import top.aiolife.record.pojo.req.ThoughtSaveReq;
+import top.aiolife.record.service.IThoughtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -53,6 +51,8 @@ public class ThoughtController {
     private final IThoughtMapper thoughtMapper;
 
     private final IRelaEventMapper relaEventMapper;
+
+    private final IThoughtService thoughtService;
 
     private final MinioUtil minioUtil;
 
@@ -140,49 +140,9 @@ public class ThoughtController {
     }
     
     @PostMapping("/save")
-    @Tool("保存一条想法，并可附带多个关联事件")
-    @McpOperation(
-            name = "thought_save",
-            description = "保存一条想法，并可附带多个关联事件"
-    )
     public ApiResponse<Boolean> save(@RequestBody ThoughtSaveReq req) {
-        Long loginId = StpUtil.getLoginIdAsLong();
-        String subject = req.getSubject() == null ? null : req.getSubject().trim();
-        if (subject == null || subject.isBlank()) {
-            String content = req.getContent() == null ? "" : req.getContent().trim();
-            String firstLine = content.split("\\R", 2)[0].trim();
-            subject = firstLine.isBlank() ? null : (firstLine.length() > 60 ? firstLine.substring(0, 60) : firstLine);
-        }
-        if (subject == null) {
-            return ApiResponse.error("主题内容不能为空");
-        }
-        ThoughtEntity entity = new ThoughtEntity();
-        entity.setSubject(subject);
-        entity.setContent(req.getContent());
-        entity.setUserId(loginId);
-        String themeKey = req.getThemeKey();
-        if (themeKey != null && ALLOWED_THEME_KEYS.contains(themeKey)) {
-            entity.setThemeKey(themeKey);
-        }
-        String normalizedStatus = normalizeStatus(req.getStatus());
-        if (normalizedStatus != null) {
-            entity.setStatus(normalizedStatus);
-        } else {
-            entity.setStatus("pending");
-        }
-        entity.setCreateUser(loginId);
-        entity.setUpdateTime(LocalDateTime.now());
-        getBaseMapper().insert(entity);
-        List<ThoughtSaveEventReq> events = req.getEvents();
-        if (events != null) {
-            events.forEach(eventReq -> {
-                ThoughtRelaEventEntity eventEntity = new ThoughtRelaEventEntity();
-                eventEntity.setThoughtId(entity.getId());
-                eventEntity.setContent(eventReq.getContent());
-                relaEventMapper.insert(eventEntity);
-            });
-        }
-        return ApiResponse.success(true);
+        long loginId = StpUtil.getLoginIdAsLong();
+        return thoughtService.save(req, loginId, null);
     }
 
     @PostMapping("/update")
