@@ -62,7 +62,7 @@ public class ThoughtController {
     private String serveBaseUrl;
 
     private static final Set<String> ALLOWED_THEME_KEYS = Set.of(
-            "blue", "cyan", "green", "purple", "pink", "orange"
+            "blue", "cyan", "green", "purple", "pink", "orange", "teal", "indigo"
     );
 
     private static final Set<String> ALLOWED_STATUSES = Set.of(

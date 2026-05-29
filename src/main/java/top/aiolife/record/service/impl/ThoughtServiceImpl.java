@@ -21,12 +21,13 @@ import java.util.concurrent.TimeUnit;
  * 闪念（思考）服务实现
  *
  * @author Ethan
+ * @date 2026-05-29
  */
 @Service
 public class ThoughtServiceImpl implements IThoughtService {
 
     private static final Set<String> ALLOWED_THEME_KEYS = Set.of(
-            "blue", "cyan", "green", "purple", "pink", "orange"
+            "blue", "cyan", "green", "purple", "pink", "orange", "teal", "indigo"
     );
 
     private static final Set<String> ALLOWED_STATUSES = Set.of(
