@@ -46,13 +46,19 @@ VALUES
  JSON_OBJECT('icon','carbon:workspace','title','工作台'),
  NULL, 0, 1, 0),
 
--- 任务中心
-(1200, 0, 'TaskCenter', '/task-center', 'BasicLayout', NULL,
- JSON_OBJECT('icon','mdi:clipboard-text-clock-outline','title','任务中心','order',1),
+-- 任务中心（历史分组容器，默认禁用；待办作为一级菜单展示）
+(1200, 0, 'TaskCenter', '/task-center', 'BasicLayout', '/task-center/todo',
+ JSON_OBJECT('icon','mdi:format-list-checks','title','待办','order',1),
  NULL, 1, 1, 0),
 (1201, 1200, 'TaskCenterTodo', '/task-center/todo', 'task-center/todo/index', NULL,
- JSON_OBJECT('icon','mdi:format-list-checks','title','待办'),
+ JSON_OBJECT('icon','mdi:format-list-checks','title','待办清单','order',0),
  NULL, 0, 1, 0),
+(1202, 1200, 'TaskCenterTodoReview', '/task-center/todo/review', 'task-center/todo/review/index', NULL,
+ JSON_OBJECT('icon','mdi:clipboard-alert-outline','title','复盘','order',1),
+ NULL, 1, 1, 0),
+(1203, 1200, 'TaskCenterTodoConfig', '/task-center/todo/config', 'task-center/todo/config/index', NULL,
+ JSON_OBJECT('icon','mdi:cog-outline','title','配置','order',2),
+ NULL, 2, 1, 0),
 
 -- 时间
 (1300, 0, 'TimeManagement', '/time-management', 'BasicLayout', NULL,
