@@ -42,6 +42,7 @@ import java.util.UUID;
  * 闪念（思考）接口
  *
  * @author Ethan
+ * @date 2026-05-31
  */
 @Slf4j
 @RestController
@@ -66,7 +67,7 @@ public class ThoughtController {
     );
 
     private static final Set<String> ALLOWED_STATUSES = Set.of(
-            "pending", "ongoing", "done", "archived"
+            "pending", "ongoing", "done", "shelved", "archived"
     );
 
     private static String normalizeStatus(String status) {
@@ -85,6 +86,7 @@ public class ThoughtController {
             case "待处理" -> "pending";
             case "进行中" -> "ongoing";
             case "已完成" -> "done";
+            case "已搁置" -> "shelved";
             case "已归档" -> "archived";
             default -> null;
         };

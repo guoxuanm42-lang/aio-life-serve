@@ -10,6 +10,7 @@ import java.util.List;
  * 思考（闪念）保存请求体（MCP Tool）
  *
  * @author Ethan
+ * @date 2026-05-31
  */
 @Data
 public class ThoughtSaveToolReq {
@@ -24,7 +25,7 @@ public class ThoughtSaveToolReq {
     @McpField(description = "主题色：blue/cyan/green/purple/pink/orange（可选）")
     private String themeKey;
 
-    @McpField(description = "状态：pending/ongoing/done/archived（可选）")
+    @McpField(description = "状态：pending/ongoing/done/shelved/archived（可选）")
     private String status;
 
     @McpField(description = "关联事件列表（可选）")

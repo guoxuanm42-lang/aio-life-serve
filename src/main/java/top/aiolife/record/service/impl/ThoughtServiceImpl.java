@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
  * 闪念（思考）服务实现
  *
  * @author Ethan
- * @date 2026-05-29
+ * @date 2026-05-31
  */
 @Service
 public class ThoughtServiceImpl implements IThoughtService {
@@ -31,7 +31,7 @@ public class ThoughtServiceImpl implements IThoughtService {
     );
 
     private static final Set<String> ALLOWED_STATUSES = Set.of(
-            "pending", "ongoing", "done", "archived"
+            "pending", "ongoing", "done", "shelved", "archived"
     );
 
     private static final long IDEMPOTENCY_TTL_SECONDS = TimeUnit.HOURS.toSeconds(24);
@@ -134,6 +134,7 @@ public class ThoughtServiceImpl implements IThoughtService {
             case "待处理" -> "pending";
             case "进行中" -> "ongoing";
             case "已完成" -> "done";
+            case "已搁置" -> "shelved";
             case "已归档" -> "archived";
             default -> null;
         };

@@ -34,6 +34,8 @@
 
 | 日期 | 模块 | 更新主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-05-31 | thought | 闪念详情局部编辑与已搁置状态 | update | [2026-05-31_thought-detail-inline-edit-and-shelved-status_update.md](./2026-05-31_thought-detail-inline-edit-and-shelved-status_update.md) |
+| 2026-05-31 | todo | 待办清单、复盘配置与 SQL 规范 | update | [2026-05-31_todo-list-review-config-and-sql-standard_update.md](./2026-05-31_todo-list-review-config-and-sql-standard_update.md) |
 | 2026-05-28 | common | MCP/REST 分离与工具契约稳定化 | update | [2026-05-28_common_mcp-rest-controller-split-and-tool-stabilization_update.md](./2026-05-28_common_mcp-rest-controller-split-and-tool-stabilization_update.md) |
 | 2026-05-26 | cbti | 移除上传图片，改为前端静态角色图片 | update | [2026-05-26_cbti-remove-image-upload-use-frontend-static.md](./2026-05-26_cbti-remove-image-upload-use-frontend-static.md) |
 | 2026-05-26 | thought | 闪念状态字段与筛选 | update | [2026-05-26_thought-status-field-and-filter.md](./2026-05-26_thought-status-field-and-filter.md) |
