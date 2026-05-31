@@ -1,9 +1,8 @@
-package top.aiolife.mcp.api;
+package top.aiolife.mcp.tools;
 
 import cn.dev33.satoken.stp.StpUtil;
-import dev.langchain4j.agent.tool.Tool;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Component;
 import top.aiolife.core.resq.ApiResponse;
 import top.aiolife.mcp.annotation.McpOperation;
 import top.aiolife.mcp.pojo.req.ExerciseRecordToolReq;
@@ -18,17 +17,26 @@ import top.aiolife.record.service.TimeRecordAiFacade;
 import java.util.List;
 
 /**
- * 时迹 MCP 工具控制器
+ * 时迹 MCP 工具。
  *
  * @author Ethan
+ * @date 2026-05-31
  */
-@RestController
+@Component
 @RequiredArgsConstructor
-public class TimeRecordToolController {
+public class TimeRecordMcpTools {
 
     private final TimeRecordAiFacade timeRecordAiFacade;
 
-    @Tool("查询指定日期范围内的所有时间记录")
+    /**
+     * 查询指定日期范围内的时间记录。
+     *
+     * @param req 日期范围查询请求
+     * @return 统一返回结构，data 为时间记录列表
+     *
+     * @author Ethan
+     * @date 2026-05-31
+     */
     @McpOperation(
             name = "time_record_queryByDateRange",
             description = "查询指定日期范围内的所有时间记录"
@@ -41,7 +49,15 @@ public class TimeRecordToolController {
         return ApiResponse.success(timeRecordAiFacade.queryByDateRangeForAI(rangeReq, userId));
     }
 
-    @Tool("保存时间记录")
+    /**
+     * 保存时间记录。
+     *
+     * @param timeRecordReq 时间记录保存工具请求
+     * @return 统一返回结构，data 为是否保存成功
+     *
+     * @author Ethan
+     * @date 2026-05-31
+     */
     @McpOperation(
             name = "time_record_save",
             description = "保存时间记录"
