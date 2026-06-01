@@ -7,9 +7,11 @@ import top.aiolife.mcp.adapter.LangChain4jToolSchemaAdapter;
 import top.aiolife.mcp.registry.McpToolRegistry;
 import top.aiolife.mcp.schema.McpFieldSchemaResolver;
 import top.aiolife.mcp.schema.McpSchemaGenerator;
+import top.aiolife.mcp.tools.FoodRecordMcpTools;
 import top.aiolife.mcp.tools.ThoughtMcpTools;
 import top.aiolife.mcp.tools.TimeRecordMcpTools;
 import top.aiolife.record.service.IThoughtService;
+import top.aiolife.record.service.FoodRecordAiFacade;
 import top.aiolife.record.service.TimeRecordAiFacade;
 
 import java.util.Map;
@@ -37,7 +39,13 @@ class McpToolCompatibilityTest {
                 .map(tool -> tool.name())
                 .collect(Collectors.toSet());
 
-        assertEquals(Set.of("thought_save", "time_record_save", "time_record_queryByDateRange"), toolNames);
+        assertEquals(Set.of(
+                "thought_save",
+                "time_record_save",
+                "time_record_queryByDateRange",
+                "food_record_save",
+                "food_record_query"
+        ), toolNames);
     }
 
     @Test
@@ -72,15 +80,41 @@ class McpToolCompatibilityTest {
         assertTrue(saveProperties.containsKey("idempotencyKey"));
     }
 
+    @Test
+    void shouldExposeFoodRecordInputFields() {
+        McpToolRegistry registry = createRegistry();
+
+        Map<String, Object> saveProperties = registry.getTool("food_record_save").schema().inputSchema().properties();
+        assertTrue(saveProperties.containsKey("id"));
+        assertTrue(saveProperties.containsKey("idempotencyKey"));
+        assertTrue(saveProperties.containsKey("dishName"));
+        assertTrue(saveProperties.containsKey("cookDate"));
+        assertTrue(saveProperties.containsKey("status"));
+        assertTrue(saveProperties.containsKey("ingredients"));
+        assertTrue(saveProperties.containsKey("steps"));
+        assertTrue(saveProperties.containsKey("worthRedo"));
+
+        Map<String, Object> queryProperties = registry.getTool("food_record_query").schema().inputSchema().properties();
+        assertTrue(queryProperties.containsKey("keyword"));
+        assertTrue(queryProperties.containsKey("category"));
+        assertTrue(queryProperties.containsKey("mealType"));
+        assertTrue(queryProperties.containsKey("rating"));
+        assertTrue(queryProperties.containsKey("worthRedo"));
+        assertTrue(queryProperties.containsKey("toImprove"));
+    }
+
     private McpToolRegistry createRegistry() {
         ThoughtMcpTools thoughtTools = new ThoughtMcpTools(mock(IThoughtService.class));
         TimeRecordMcpTools timeRecordTools = new TimeRecordMcpTools(mock(TimeRecordAiFacade.class));
+        FoodRecordMcpTools foodRecordTools = new FoodRecordMcpTools(mock(FoodRecordAiFacade.class));
         ApplicationContext applicationContext = mock(ApplicationContext.class);
-        when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"thoughtMcpTools", "timeRecordMcpTools"});
+        when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"thoughtMcpTools", "timeRecordMcpTools", "foodRecordMcpTools"});
         doReturn(ThoughtMcpTools.class).when(applicationContext).getType("thoughtMcpTools");
         doReturn(TimeRecordMcpTools.class).when(applicationContext).getType("timeRecordMcpTools");
+        doReturn(FoodRecordMcpTools.class).when(applicationContext).getType("foodRecordMcpTools");
         when(applicationContext.getBean("thoughtMcpTools")).thenReturn(thoughtTools);
         when(applicationContext.getBean("timeRecordMcpTools")).thenReturn(timeRecordTools);
+        when(applicationContext.getBean("foodRecordMcpTools")).thenReturn(foodRecordTools);
 
         McpFieldSchemaResolver resolver = new McpFieldSchemaResolver();
         McpSchemaGenerator generator = new McpSchemaGenerator(resolver);

@@ -8,9 +8,11 @@ import top.aiolife.mcp.definition.McpToolDefinition;
 import top.aiolife.mcp.registry.McpToolRegistry;
 import top.aiolife.mcp.schema.McpFieldSchemaResolver;
 import top.aiolife.mcp.schema.McpSchemaGenerator;
+import top.aiolife.mcp.tools.FoodRecordMcpTools;
 import top.aiolife.mcp.tools.ThoughtMcpTools;
 import top.aiolife.mcp.tools.TimeRecordMcpTools;
 import top.aiolife.record.service.IThoughtService;
+import top.aiolife.record.service.FoodRecordAiFacade;
 import top.aiolife.record.service.TimeRecordAiFacade;
 
 import java.util.Collection;
@@ -40,11 +42,13 @@ class McpToolRegistryTest {
         Set<String> names = new HashSet<>();
         tools.forEach(tool -> names.add(tool.name()));
 
-        assertEquals(3, tools.size());
-        assertEquals(3, names.size());
+        assertEquals(5, tools.size());
+        assertEquals(5, names.size());
         assertNotNull(registry.getTool("thought_save"));
         assertTrue(names.contains("time_record_save"));
         assertTrue(names.contains("time_record_queryByDateRange"));
+        assertTrue(names.contains("food_record_save"));
+        assertTrue(names.contains("food_record_query"));
     }
 
     @Test
@@ -60,12 +64,15 @@ class McpToolRegistryTest {
     private McpToolRegistry createRegistry() {
         ThoughtMcpTools thoughtTools = new ThoughtMcpTools(mock(IThoughtService.class));
         TimeRecordMcpTools timeRecordTools = new TimeRecordMcpTools(mock(TimeRecordAiFacade.class));
+        FoodRecordMcpTools foodRecordTools = new FoodRecordMcpTools(mock(FoodRecordAiFacade.class));
         ApplicationContext applicationContext = mock(ApplicationContext.class);
-        when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"thoughtMcpTools", "timeRecordMcpTools"});
+        when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"thoughtMcpTools", "timeRecordMcpTools", "foodRecordMcpTools"});
         doReturn(ThoughtMcpTools.class).when(applicationContext).getType("thoughtMcpTools");
         doReturn(TimeRecordMcpTools.class).when(applicationContext).getType("timeRecordMcpTools");
+        doReturn(FoodRecordMcpTools.class).when(applicationContext).getType("foodRecordMcpTools");
         when(applicationContext.getBean("thoughtMcpTools")).thenReturn(thoughtTools);
         when(applicationContext.getBean("timeRecordMcpTools")).thenReturn(timeRecordTools);
+        when(applicationContext.getBean("foodRecordMcpTools")).thenReturn(foodRecordTools);
 
         McpFieldSchemaResolver resolver = new McpFieldSchemaResolver();
         McpSchemaGenerator generator = new McpSchemaGenerator(resolver);

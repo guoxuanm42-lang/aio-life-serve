@@ -4,10 +4,12 @@ import io.modelcontextprotocol.spec.McpSchema;
 import org.junit.jupiter.api.Test;
 import top.aiolife.mcp.annotation.McpField;
 import top.aiolife.mcp.annotation.McpOperation;
+import top.aiolife.mcp.pojo.req.FoodRecordSaveToolReq;
 import top.aiolife.mcp.pojo.req.ThoughtSaveToolReq;
 import top.aiolife.mcp.pojo.req.TimeRecordSaveToolReq;
 import top.aiolife.mcp.schema.McpFieldSchemaResolver;
 import top.aiolife.mcp.schema.McpSchemaGenerator;
+import top.aiolife.mcp.tools.FoodRecordMcpTools;
 import top.aiolife.mcp.tools.ThoughtMcpTools;
 import top.aiolife.mcp.tools.TimeRecordMcpTools;
 
@@ -71,6 +73,36 @@ class McpSchemaGeneratorTest {
         assertTrue(exerciseProperties.containsKey("exerciseTypeId"));
         assertTrue(exerciseProperties.containsKey("exerciseDate"));
         assertTrue(exerciseProperties.containsKey("exerciseCount"));
+    }
+
+    @Test
+    void shouldGenerateFoodRecordSaveSchemaWithNestedIngredientsAndSteps() throws NoSuchMethodException {
+        Method method = FoodRecordMcpTools.class.getDeclaredMethod("save", FoodRecordSaveToolReq.class);
+        McpSchema.Tool tool = generate(method);
+        Map<String, Object> properties = tool.inputSchema().properties();
+
+        assertTrue(properties.containsKey("dishName"));
+        assertTrue(properties.containsKey("idempotencyKey"));
+        assertTrue(properties.containsKey("cookDate"));
+        assertTrue(properties.containsKey("status"));
+        assertTrue(properties.containsKey("ingredients"));
+        assertTrue(properties.containsKey("steps"));
+        assertTrue(properties.containsKey("summary"));
+        assertTrue(properties.containsKey("nextImprove"));
+
+        Map<?, ?> ingredientsSchema = (Map<?, ?>) properties.get("ingredients");
+        Map<?, ?> ingredientItems = (Map<?, ?>) ingredientsSchema.get("items");
+        Map<?, ?> ingredientProperties = (Map<?, ?>) ingredientItems.get("properties");
+        assertTrue(ingredientProperties.containsKey("name"));
+        assertTrue(ingredientProperties.containsKey("quantity"));
+        assertTrue(ingredientProperties.containsKey("unit"));
+
+        Map<?, ?> stepsSchema = (Map<?, ?>) properties.get("steps");
+        Map<?, ?> stepItems = (Map<?, ?>) stepsSchema.get("items");
+        Map<?, ?> stepProperties = (Map<?, ?>) stepItems.get("properties");
+        assertTrue(stepProperties.containsKey("stepNo"));
+        assertTrue(stepProperties.containsKey("title"));
+        assertTrue(stepProperties.containsKey("description"));
     }
 
     private McpSchema.Tool generate(Method method) {
