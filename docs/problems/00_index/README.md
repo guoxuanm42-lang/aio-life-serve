@@ -18,6 +18,7 @@
 
 | 日期 | 模块 | 问题主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-06-02 | 07_deployment | 服务器访问 /#/analytics 进入项目 404：sys_menu 菜单被禁用 | problem | [查看文档](../07_deployment/2026-06-02_服务器访问analytics进入项目404_sys_menu菜单被禁用.md) |
 | 2026-05-27 | 04_git | Git HTTPS schannel TLS 断开（missing close_notify） | problem | [查看文档](../04_git/2026-05-27_git_https_schannel_tls断开_missing_close_notify.md) |
 | 2026-05-27 | 04_git | 切换分支时 untracked 文件将被覆盖，无法 switch | problem | [查看文档](../04_git/2026-05-27_git切分支提示untracked将被覆盖_无法switch.md) |
 | 2026-05-27 | 04_git | PowerShell 下 stash@{0} 大括号解析导致 Git 命令失败 | problem | [查看文档](../04_git/2026-05-27_powershell_git_stash_at大括号解析导致命令失败.md) |

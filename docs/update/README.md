@@ -34,6 +34,8 @@
 
 | 日期 | 模块 | 更新主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-06-02 | server | 后端启动端口 45678 占用处理 | update | [2026-06-02_backend-port-45678-conflict-fix_update.md](./2026-06-02_backend-port-45678-conflict-fix_update.md) |
+| 2026-06-02 | auth | 菜单排序字段同步为前端 meta.order | update | [2026-06-02_menu-sort-sync-meta-order_update.md](./2026-06-02_menu-sort-sync-meta-order_update.md) |
 | 2026-05-31 | common | MCP 工具重构、调用链标准化与闪念导入 | update | [2026-05-31_common-mcp-tool-refactor-and-thought-import_update.md](./2026-05-31_common-mcp-tool-refactor-and-thought-import_update.md) |
 | 2026-05-31 | thought | 闪念详情局部编辑与已搁置状态 | update | [2026-05-31_thought-detail-inline-edit-and-shelved-status_update.md](./2026-05-31_thought-detail-inline-edit-and-shelved-status_update.md) |
 | 2026-05-31 | todo | 待办清单、复盘配置与 SQL 规范 | update | [2026-05-31_todo-list-review-config-and-sql-standard_update.md](./2026-05-31_todo-list-review-config-and-sql-standard_update.md) |
