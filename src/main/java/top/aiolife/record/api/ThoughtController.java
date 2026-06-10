@@ -42,7 +42,7 @@ import java.util.UUID;
  * 闪念（思考）接口
  *
  * @author Ethan
- * @date 2026-05-31
+ * @date 2026-06-05
  */
 @Slf4j
 @RestController
@@ -96,6 +96,17 @@ public class ThoughtController {
         return thoughtMapper;
     }
 
+    /**
+     * 查询当前用户闪念列表。
+     *
+     * <p>用途：按分类、状态和主题内容筛选闪念，返回分页列表与关联事件。</p>
+     *
+     * @param query 查询请求，condition 可包含 themeKey、status、subject
+     * @return 统一返回结构，data 为分页闪念列表
+     *
+     * @author Ethan
+     * @date 2026-06-05
+     */
     @PostMapping("/query")
     public ApiResponse<PageResp<ThoughtEntity>> query(
             @RequestBody CommonQuery<ThoughtEntity> query) {
@@ -115,6 +126,11 @@ public class ThoughtController {
             String normalizedStatus = normalizeStatus(condition.getStatus());
             if (normalizedStatus != null) {
                 lambdaQueryWrapper.eq(ThoughtEntity::getStatus, normalizedStatus);
+            }
+
+            String subject = condition.getSubject();
+            if (StringUtils.hasText(subject)) {
+                lambdaQueryWrapper.like(ThoughtEntity::getSubject, subject.trim());
             }
         }
 

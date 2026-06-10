@@ -77,16 +77,27 @@ VALUES
  JSON_OBJECT('icon','mdi:shield-account-outline','title','分类管理（管理员）','backTop',false),
  'admin', 3, 1, 0),
 
--- 编程看板
-(1400, 0, 'Coding', '/coding', 'BasicLayout', NULL,
- JSON_OBJECT('icon','lucide:code-2','title','编程看板','order',3,'keepAlive',true),
+-- 研发管理
+(1400, 0, 'Coding', '/coding', 'BasicLayout', '/coding/mcp-tools',
+ JSON_OBJECT('icon','lucide:wrench','title','研发管理','order',3,'keepAlive',true),
  NULL, 3, 1, 0),
-(1401, 1400, 'GithubGraph', '/coding/github', 'coding/github/index', NULL,
+(1403, 1400, 'McpTools', '/coding/mcp-tools', 'coding/mcp-tools/index', NULL,
+ JSON_OBJECT('icon','lucide:box','title','MCP 工具列表','order',0),
+ NULL, 0, 1, 0),
+
+-- 编程看板
+(1450, 0, 'CodingDashboard', '/coding-dashboard', 'BasicLayout', '/coding/github',
+ JSON_OBJECT('icon','lucide:code-2','title','编程看板','order',4,'keepAlive',true),
+ NULL, 4, 1, 0),
+(1401, 1450, 'GithubGraph', '/coding/github', 'coding/github/index', NULL,
  JSON_OBJECT('icon','mdi:github','title','Github','backTop',false),
  NULL, 0, 1, 0),
-(1402, 1400, 'LeetCode', '/coding/leetcode', 'coding/leetcode/index', NULL,
+(1402, 1450, 'LeetCode', '/coding/leetcode', 'coding/leetcode/index', NULL,
  JSON_OBJECT('icon','simple-icons:leetcode','title','LeetCode'),
  NULL, 1, 1, 0),
+(1404, 1450, 'Csdn', '/coding/csdn', 'coding/csdn/index', NULL,
+ JSON_OBJECT('icon','simple-icons:csdn','title','CSDN'),
+ NULL, 2, 1, 0),
 
 -- 记录
 (1500, 0, 'Demos', '/my-hub', 'BasicLayout', NULL,

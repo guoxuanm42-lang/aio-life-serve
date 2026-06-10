@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * 菜单服务实现类
  *
  * @author Ethan
- * @date 2026/04/19
+ * @date 2026-06-02
  */
 @Service
 @RequiredArgsConstructor
@@ -195,7 +195,7 @@ public class MenuServiceImpl implements IMenuService {
             childrenMap.computeIfAbsent(pid, k -> new ArrayList<>()).add(entity);
         }
         for (List<SysMenuEntity> children : childrenMap.values()) {
-            children.sort(Comparator.comparing(SysMenuEntity::getSort).thenComparing(SysMenuEntity::getId));
+            children.sort(menuSortComparator());
         }
 
         return buildChildren(0L, childrenMap);
@@ -222,10 +222,16 @@ public class MenuServiceImpl implements IMenuService {
             childrenMap.computeIfAbsent(pid, k -> new ArrayList<>()).add(entity);
         }
         for (List<SysMenuEntity> children : childrenMap.values()) {
-            children.sort(Comparator.comparing(SysMenuEntity::getSort).thenComparing(SysMenuEntity::getId));
+            children.sort(menuSortComparator());
         }
 
         return buildAdminChildren(0L, childrenMap);
+    }
+
+    private Comparator<SysMenuEntity> menuSortComparator() {
+        return Comparator
+                .comparing((SysMenuEntity entity) -> entity.getSort() == null ? 0 : entity.getSort())
+                .thenComparing(entity -> entity.getId() == null ? 0L : entity.getId());
     }
 
     private List<MenuAdminVO> buildAdminChildren(long parentId, Map<Long, List<SysMenuEntity>> childrenMap) {
@@ -248,8 +254,17 @@ public class MenuServiceImpl implements IMenuService {
         vo.setName(entity.getName());
         vo.setComponent(entity.getComponent());
         vo.setRedirect(entity.getRedirect());
-        vo.setMeta(readMeta(entity.getMeta()));
+        vo.setMeta(buildRouteMeta(entity));
         return vo;
+    }
+
+    private Map<String, Object> buildRouteMeta(SysMenuEntity entity) {
+        Map<String, Object> meta = readMeta(entity.getMeta());
+        if (meta == null) {
+            meta = new HashMap<>();
+        }
+        meta.put("order", entity.getSort() == null ? 0 : entity.getSort());
+        return meta;
     }
 
     private MenuAdminVO toAdminVo(SysMenuEntity entity) {

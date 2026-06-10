@@ -34,6 +34,11 @@
 
 | 日期 | 模块 | 更新主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-06-05 | common | 美食记录 Agent MCP 文档 | update | [2026-06-05_common-food-record-agent-mcp-docs_update.md](./2026-06-05_common-food-record-agent-mcp-docs_update.md) |
+| 2026-06-05 | thought | 闪念主题内容模糊搜索 | update | [2026-06-05_thought-subject-fuzzy-search_update.md](./2026-06-05_thought-subject-fuzzy-search_update.md) |
+| 2026-06-04 | common | MCP 工具管理、参考中心与模拟调用 | update | [2026-06-04_common-mcp-tool-management-reference-center_update.md](./2026-06-04_common-mcp-tool-management-reference-center_update.md) |
+| 2026-06-02 | server | 后端启动端口 45678 占用处理 | update | [2026-06-02_backend-port-45678-conflict-fix_update.md](./2026-06-02_backend-port-45678-conflict-fix_update.md) |
+| 2026-06-02 | auth | 菜单排序字段同步为前端 meta.order | update | [2026-06-02_menu-sort-sync-meta-order_update.md](./2026-06-02_menu-sort-sync-meta-order_update.md) |
 | 2026-05-31 | common | MCP 工具重构、调用链标准化与闪念导入 | update | [2026-05-31_common-mcp-tool-refactor-and-thought-import_update.md](./2026-05-31_common-mcp-tool-refactor-and-thought-import_update.md) |
 | 2026-05-31 | thought | 闪念详情局部编辑与已搁置状态 | update | [2026-05-31_thought-detail-inline-edit-and-shelved-status_update.md](./2026-05-31_thought-detail-inline-edit-and-shelved-status_update.md) |
 | 2026-05-31 | todo | 待办清单、复盘配置与 SQL 规范 | update | [2026-05-31_todo-list-review-config-and-sql-standard_update.md](./2026-05-31_todo-list-review-config-and-sql-standard_update.md) |
