@@ -5,6 +5,7 @@
 ## 文档索引
 
 - `streamable-http.md`：MCP Streamable HTTP 接入、鉴权和 curl 调试说明。
+- `mcp-principles-and-limits.md`：AIO-LIFE MCP 调用原则、运行链路、工具注册、鉴权、限流、幂等、审计和业务限制说明。
 - `food-record-agent-prompt.md`：AIO-LIFE 美食记录 Agent 提示词，可复制到 Trae 智能体配置中使用。
 - `food-record-agent-usage.md`：AIO-LIFE 美食记录 Agent 的 Trae“何时调用”配置和用户使用模板。
 

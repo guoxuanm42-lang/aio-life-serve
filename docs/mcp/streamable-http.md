@@ -10,6 +10,21 @@
 
 ## 当前已接入工具
 
+- `thought_query`
+  - 说明：查询当前用户闪念记录，返回适合 Agent 阅读的摘要列表
+  - 入参主体：
+    - `keyword`
+    - `subject`
+    - `content`
+    - `themeKey`
+    - `status`
+    - `startDate`
+    - `endDate`
+    - `hasEvents`
+    - `page`
+    - `pageSize`
+    - `sortBy`
+    - `sortOrder`
 - `thought_save`
   - 说明：保存一条想法，并可附带多个关联事件
   - 入参主体：

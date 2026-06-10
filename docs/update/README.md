@@ -34,6 +34,7 @@
 
 | 日期 | 模块 | 更新主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-06-10 | thought | 闪念统计洞察与时间趋势 | update | [2026-06-10_thought-statistics-insight_update.md](./2026-06-10_thought-statistics-insight_update.md) |
 | 2026-06-05 | common | 美食记录 Agent MCP 文档 | update | [2026-06-05_common-food-record-agent-mcp-docs_update.md](./2026-06-05_common-food-record-agent-mcp-docs_update.md) |
 | 2026-06-05 | thought | 闪念主题内容模糊搜索 | update | [2026-06-05_thought-subject-fuzzy-search_update.md](./2026-06-05_thought-subject-fuzzy-search_update.md) |
 | 2026-06-04 | common | MCP 工具管理、参考中心与模拟调用 | update | [2026-06-04_common-mcp-tool-management-reference-center_update.md](./2026-06-04_common-mcp-tool-management-reference-center_update.md) |
