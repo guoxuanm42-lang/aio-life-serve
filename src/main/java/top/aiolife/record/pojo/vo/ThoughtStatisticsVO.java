@@ -11,7 +11,7 @@ import java.util.List;
  * <p>用途：承载当前用户闪念总览指标、状态分布和分类分布数据。</p>
  *
  * @author Ethan
- * @date 2026-06-10
+ * @date 2026-06-12
  */
 @Data
 public class ThoughtStatisticsVO {
@@ -22,11 +22,13 @@ public class ThoughtStatisticsVO {
 
     private List<DistributionItem> categoryDistribution;
 
+    private List<TypeSummary> typeSummaries;
+
     /**
      * 闪念统计总览指标。
      *
      * @author Ethan
-     * @date 2026-06-10
+     * @date 2026-06-12
      */
     @Data
     public static class Summary {
@@ -54,7 +56,7 @@ public class ThoughtStatisticsVO {
      * 闪念统计分布项。
      *
      * @author Ethan
-     * @date 2026-06-10
+     * @date 2026-06-12
      */
     @Data
     public static class DistributionItem {
@@ -66,5 +68,33 @@ public class ThoughtStatisticsVO {
         private long count;
 
         private BigDecimal percent;
+    }
+
+    /**
+     * 闪念类型维度统计摘要。
+     *
+     * @author Ethan
+     * @date 2026-06-12
+     */
+    @Data
+    public static class TypeSummary {
+
+        private String thoughtType;
+
+        private String typeName;
+
+        private long totalCount;
+
+        private List<DistributionItem> statusDistribution;
+
+        private long backlogCount;
+
+        private long doneCount;
+
+        private long shelvedCount;
+
+        private long archivedCount;
+
+        private BigDecimal conversionRate;
     }
 }

@@ -4,10 +4,10 @@ import lombok.Data;
 import top.aiolife.mcp.annotation.McpField;
 
 /**
- * 美食记录材料 MCP 保存请求。
+ * 美食记录材料 MCP 轻量保存请求。
  *
  * @author Ethan
- * @date 2026-05-31
+ * @date 2026-06-10
  */
 @Data
 public class FoodRecordIngredientToolReq {
@@ -23,7 +23,4 @@ public class FoodRecordIngredientToolReq {
 
     @McpField(description = "材料备注，例如 去皮、切丁、可替换")
     private String remark;
-
-    @McpField(description = "排序值，数字越小越靠前；可选")
-    private Integer sortOrder;
 }

@@ -17,13 +17,14 @@ import java.lang.reflect.Method;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * MCP Schema 生成器测试。
  *
  * @author Ethan
- * @date 2026-05-31
+ * @date 2026-06-10
  */
 class McpSchemaGeneratorTest {
 
@@ -89,6 +90,14 @@ class McpSchemaGeneratorTest {
         assertTrue(properties.containsKey("steps"));
         assertTrue(properties.containsKey("summary"));
         assertTrue(properties.containsKey("nextImprove"));
+        assertFalse(properties.containsKey("difficulty"));
+        assertFalse(properties.containsKey("successLevel"));
+        assertFalse(properties.containsKey("prepMinutes"));
+        assertFalse(properties.containsKey("cookMinutes"));
+        assertFalse(properties.containsKey("totalMinutes"));
+        assertFalse(properties.containsKey("tasteDescription"));
+        assertFalse(properties.containsKey("briefSummary"));
+        assertFalse(properties.containsKey("nextTrySuggestion"));
 
         Map<?, ?> ingredientsSchema = (Map<?, ?>) properties.get("ingredients");
         Map<?, ?> ingredientItems = (Map<?, ?>) ingredientsSchema.get("items");
@@ -96,13 +105,17 @@ class McpSchemaGeneratorTest {
         assertTrue(ingredientProperties.containsKey("name"));
         assertTrue(ingredientProperties.containsKey("quantity"));
         assertTrue(ingredientProperties.containsKey("unit"));
+        assertTrue(ingredientProperties.containsKey("remark"));
+        assertFalse(ingredientProperties.containsKey("sortOrder"));
 
         Map<?, ?> stepsSchema = (Map<?, ?>) properties.get("steps");
         Map<?, ?> stepItems = (Map<?, ?>) stepsSchema.get("items");
         Map<?, ?> stepProperties = (Map<?, ?>) stepItems.get("properties");
-        assertTrue(stepProperties.containsKey("stepNo"));
         assertTrue(stepProperties.containsKey("title"));
         assertTrue(stepProperties.containsKey("description"));
+        assertTrue(stepProperties.containsKey("durationMinutes"));
+        assertFalse(stepProperties.containsKey("stepNo"));
+        assertFalse(stepProperties.containsKey("sortOrder"));
     }
 
     private McpSchema.Tool generate(Method method) {

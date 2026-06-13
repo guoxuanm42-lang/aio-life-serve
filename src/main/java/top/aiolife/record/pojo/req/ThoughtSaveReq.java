@@ -9,9 +9,12 @@ import java.util.List;
  * 思考（闪念）保存请求体
  *
  * @author Ethan
+ * @date 2026-06-12
  */
 @Data
 public class ThoughtSaveReq {
+
+    private Long id;
 
     @JsonAlias({"topic"})
     private String subject;
@@ -22,5 +25,15 @@ public class ThoughtSaveReq {
 
     private String status;
 
+    private String thoughtType;
+
+    private String changeReason;
+
     private List<ThoughtSaveEventReq> events;
+
+    private ThoughtActionDetailReq actionDetail;
+
+    private ThoughtEmotionDetailReq emotionDetail;
+
+    private ThoughtReflectionDetailReq reflectionDetail;
 }

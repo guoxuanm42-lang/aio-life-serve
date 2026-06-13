@@ -59,22 +59,16 @@
 - dishName：从用户讨论的最终菜品中提取。
 - category：结合菜品判断，例如“家常菜、主食、汤羹、甜品、烘焙、饮品、早餐”等。
 - mealType：结合上下文判断为“早餐、午餐、晚餐、夜宵、加餐”；无法判断时按当前时间合理推断。
-- ingredients：整理食材清单，包含 name、quantity、unit、remark、sortOrder。
-- steps：整理做法步骤，包含 stepNo、title、description、durationMinutes、sortOrder。
+- ingredients：整理食材清单，包含 name、quantity、unit、remark；不要传排序字段。
+- steps：整理做法步骤，包含 title、description、durationMinutes；不要传 stepNo 或排序字段，后端会按数组顺序保存。
 - tags：用逗号分隔，包含菜系、口味、难度、烹饪方式、场景等，例如“家常菜,快手,下饭,少油”。
-- difficulty：根据步骤复杂度判断为“简单 / 中等 / 困难”。
-- prepMinutes：估算备菜时间。
-- cookMinutes：估算烹饪时间。
-- totalMinutes：优先使用 prepMinutes + cookMinutes。
-- rating：草稿阶段如无实际复盘，不要虚构评分，可留空。
-- successLevel：草稿阶段通常留空。
-- tasteDescription：根据用户偏好和做法预期描述口味。
-- problems：记录聊天中提到的风险点或注意事项，例如“容易出水、容易炒老、盐量需控制”。
 - summary：整理完整摘要，说明为什么选这道菜、准备怎么做、关键注意点。
-- briefSummary：一句话总结，适合列表展示。
-- nextImprove：根据聊天内容整理下次可优化点。
+- 计划记录：只填核心事实和规划内容，通常包含 dishName、cookDate、mealType、category、tags、ingredients、steps、summary。
+- 复盘记录：只有当用户已经做完或明确复盘时，才补充 rating、problems、nextImprove、worthRedo。
+- rating：草稿阶段如无实际复盘，不要虚构评分，可留空。
+- problems：记录聊天中提到的风险点、实际问题或注意事项，例如“容易出水、容易炒老、盐量需控制”。
+- nextImprove：根据复盘内容整理下次可优化点。
 - worthRedo：如果用户表达“想常做、适合复做、简单好吃”，设为 true；不确定可留空。
-- nextTrySuggestion：给出下次尝试建议，例如“下次可加入青椒提升香味”。
 
 四、写入后的回复
 
@@ -111,4 +105,3 @@
 - 写入默认是草稿，status 使用 `draft`，不要默认标记为 `done`。
 - 当前美食 MCP 工具不处理图片，只记录文字结构化内容。
 ```
-

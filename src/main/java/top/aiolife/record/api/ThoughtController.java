@@ -19,9 +19,11 @@ import top.aiolife.record.pojo.entity.ThoughtRelaEventEntity;
 import top.aiolife.record.pojo.entity.ThoughtEntity;
 import top.aiolife.record.pojo.req.CommonReq;
 import top.aiolife.record.pojo.req.ThoughtSaveReq;
+import top.aiolife.record.pojo.vo.ThoughtDetailVO;
 import top.aiolife.record.service.IThoughtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -70,6 +72,10 @@ public class ThoughtController {
             "pending", "ongoing", "done", "shelved", "archived"
     );
 
+    private static final Set<String> ALLOWED_THOUGHT_TYPES = Set.of(
+            "action", "emotion", "reflection"
+    );
+
     private static String normalizeStatus(String status) {
         if (status == null) {
             return null;
@@ -90,6 +96,19 @@ public class ThoughtController {
             case "已归档" -> "archived";
             default -> null;
         };
+    }
+
+    private static String normalizeThoughtTypeFilter(String thoughtType) {
+        if (!StringUtils.hasText(thoughtType)) {
+            return null;
+        }
+        String normalized = thoughtType.trim().toLowerCase();
+        return ALLOWED_THOUGHT_TYPES.contains(normalized) ? normalized : null;
+    }
+
+    private static String normalizeThoughtTypeOrDefault(String thoughtType) {
+        String normalized = normalizeThoughtTypeFilter(thoughtType);
+        return normalized == null ? "action" : normalized;
     }
 
     public IThoughtMapper getBaseMapper() {
@@ -128,6 +147,11 @@ public class ThoughtController {
                 lambdaQueryWrapper.eq(ThoughtEntity::getStatus, normalizedStatus);
             }
 
+            String normalizedThoughtType = normalizeThoughtTypeFilter(condition.getThoughtType());
+            if (normalizedThoughtType != null) {
+                lambdaQueryWrapper.eq(ThoughtEntity::getThoughtType, normalizedThoughtType);
+            }
+
             String subject = condition.getSubject();
             if (StringUtils.hasText(subject)) {
                 lambdaQueryWrapper.like(ThoughtEntity::getSubject, subject.trim());
@@ -144,6 +168,7 @@ public class ThoughtController {
         if (!thoughtIdList.isEmpty()) {
             LambdaQueryWrapper<ThoughtRelaEventEntity> relaEventLambdaQueryWrapper = new LambdaQueryWrapper<>();
             relaEventLambdaQueryWrapper.in(ThoughtRelaEventEntity::getThoughtId, thoughtIdList);
+            relaEventLambdaQueryWrapper.eq(ThoughtRelaEventEntity::getIsDeleted, 0);
             List<ThoughtRelaEventEntity> thoughtRelaEventEntityList = relaEventMapper.selectList(relaEventLambdaQueryWrapper);
             // 关联事件
             iPage.getRecords().forEach(thoughtVO -> {
@@ -163,118 +188,54 @@ public class ThoughtController {
         return thoughtService.save(req, loginId, null);
     }
 
+    /**
+     * 更新当前用户的闪念记录。
+     *
+     * <p>用途：前端提交闪念主表、事件流和结构化详情信息，后端校验归属后完成更新。</p>
+     *
+     * @param req 闪念更新请求体，包含 id、subject、content、status、thoughtType、events 和 detail 信息
+     * @return 统一返回结构，data 表示是否更新成功
+     *
+     * @author Ethan
+     * @date 2026-06-12
+     */
     @PostMapping("/update")
-    public ApiResponse<Boolean> update(@RequestBody ThoughtEntity entity) {
-        Long userId = StpUtil.getLoginIdAsLong();
-        entity.setUserId(userId);
-        entity.setUpdateTime(LocalDateTime.now());
-
-        String subject = entity.getSubject() == null ? null : entity.getSubject().trim();
-        if (subject == null || subject.isBlank()) {
-            String content = entity.getContent() == null ? "" : entity.getContent().trim();
-            String firstLine = content.split("\\R", 2)[0].trim();
-            subject = firstLine.isBlank() ? null : (firstLine.length() > 60 ? firstLine.substring(0, 60) : firstLine);
-        }
-        if (subject != null) {
-            entity.setSubject(subject);
-        }
-
-        String themeKey = entity.getThemeKey();
-        if (themeKey != null && !ALLOWED_THEME_KEYS.contains(themeKey)) {
-            entity.setThemeKey(null);
-        }
-
-        String normalizedStatus = normalizeStatus(entity.getStatus());
-        if (entity.getStatus() != null && normalizedStatus == null) {
-            entity.setStatus(null);
-        } else if (normalizedStatus != null) {
-            entity.setStatus(normalizedStatus);
-        }
-        
-        LambdaQueryWrapper<ThoughtEntity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(ThoughtEntity::getId, entity.getId());
-        wrapper.eq(ThoughtEntity::getUserId, userId);
-        
-        int rows = getBaseMapper().update(entity, wrapper);
-        
-        if (rows > 0) {
-            // 更新事件
-            List<ThoughtRelaEventEntity> events = entity.getEvents();
-            if (events != null) {
-                events.forEach(eventEntity -> {
-                    eventEntity.setThoughtId(entity.getId());
-                    relaEventMapper.insertOrUpdate(eventEntity);
-                });
-            }
-            return ApiResponse.success(true);
-        }
-        return ApiResponse.error("无权操作或记录不存在");
+    public ApiResponse<Boolean> update(@RequestBody ThoughtSaveReq req) {
+        long loginId = StpUtil.getLoginIdAsLong();
+        return thoughtService.update(req, loginId);
     }
 
     /**
-     * 上传闪念卡图片。
+     * 查询当前用户的闪念详情。
      *
-     * <p>用途：前端为某条闪念上传卡片图片，后端将图片写入 MinIO，并把对象键保存到 thought.card_object。</p>
+     * <p>用途：前端打开编辑或详情弹窗时，按闪念 ID 获取主记录、事件流、三类结构化详情和状态日志。</p>
      *
      * @param id 闪念 ID
-     * @param file 图片文件（multipart/form-data，字段名为 file）
-     * @return 统一返回结构，data 包含 cardObject 与 cardUrl
+     * @return 统一返回结构，data 为闪念详情；无权限或记录不存在时返回空
+     *
+     * @author Ethan
+     * @date 2026-06-12
      */
-    @PostMapping("/{id}/card/upload")
-    public ApiResponse<Map<String, Object>> uploadCard(@PathVariable("id") Long id, @RequestParam("file") MultipartFile file) {
-        if (id == null) {
-            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "id 不能为空");
-        }
-        if (file == null || file.isEmpty()) {
-            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "文件不能为空");
-        }
-        String contentType = file.getContentType();
-        if (!StringUtils.hasText(contentType) || !contentType.startsWith("image/")) {
-            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, "仅支持图片文件");
-        }
-        long userId = StpUtil.getLoginIdAsLong();
-        ThoughtEntity exist = thoughtMapper.selectById(id);
-        if (exist == null || !Objects.equals(exist.getIsDeleted(), 0) || !Objects.equals(exist.getUserId(), userId)) {
-            return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, "无权操作或记录不存在");
-        }
-
-        String ext = detectExt(file.getOriginalFilename(), contentType);
-        String filename = UUID.randomUUID().toString().replace("-", "") + "." + ext;
-        String objectName = "think-card/" + id + "/" + filename;
-        String bucketName = StringUtils.hasText(minioConfig.getBucketName()) ? minioConfig.getBucketName() : "aiolife";
-
-        try {
-            minioUtil.uploadFile(bucketName, file, objectName);
-
-            ThoughtEntity update = new ThoughtEntity();
-            update.setCardObject(objectName);
-            update.fillUpdateCommonField(userId);
-
-            LambdaUpdateWrapper<ThoughtEntity> wrapper = new LambdaUpdateWrapper<>();
-            wrapper.eq(ThoughtEntity::getId, id);
-            wrapper.eq(ThoughtEntity::getUserId, userId);
-            wrapper.eq(ThoughtEntity::getIsDeleted, 0);
-            thoughtMapper.update(update, wrapper);
-
-            Map<String, Object> data = new HashMap<>();
-            data.put("cardObject", objectName);
-            data.put("cardUrl", serveBaseUrl + "/file/preview/" + bucketName + "/" + objectName);
-            return ApiResponse.success(data);
-        } catch (Exception e) {
-            return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, "上传失败: " + e.getMessage());
-        }
+    @GetMapping("/{id}/detail")
+    public ApiResponse<ThoughtDetailVO> detail(@PathVariable Long id) {
+        long loginId = StpUtil.getLoginIdAsLong();
+        return ApiResponse.success(thoughtService.detail(id, loginId));
     }
 
     /**
-     * 批量删除
+     * ?????????
+     *
+     * <p>????????? ID ???????????????????????</p>
+     *
+     * @param commonReq ?????????? idList
+     * @return ???????data ????????
+     *
+     * @author Ethan
+     * @date 2026-06-12
      */
     @PostMapping("/batchDelete")
-    public ApiResponse<Boolean> delete(@RequestBody CommonReq CommonReq) {
-        LambdaUpdateWrapper<ThoughtEntity> lambdaUpdateWrapper = new LambdaUpdateWrapper<>();
-        lambdaUpdateWrapper.eq(ThoughtEntity::getUserId, StpUtil.getLoginIdAsLong());
-        lambdaUpdateWrapper.in(ThoughtEntity::getId, CommonReq.getIdList());
-        getBaseMapper().delete(lambdaUpdateWrapper);
-        return ApiResponse.success(true);
+    public ApiResponse<Boolean> delete(@RequestBody CommonReq commonReq) {
+        return thoughtService.batchDelete(commonReq, StpUtil.getLoginIdAsLong());
     }
 
     private String detectExt(String filename, String contentType) {

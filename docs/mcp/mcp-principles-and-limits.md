@@ -443,6 +443,24 @@ pending
 
 ### 12.3 `food_record_save`
 
+轻量写入字段：
+
+- `id`
+- `idempotencyKey`
+- `dishName`
+- `category`
+- `mealType`
+- `cookDate`
+- `status`
+- `tags`
+- `rating`
+- `ingredients`
+- `steps`
+- `problems`
+- `summary`
+- `nextImprove`
+- `worthRedo`
+
 核心限制：
 
 - `dishName` 是业务关键字段，无法确定时应追问。
@@ -456,6 +474,9 @@ draft, done, to_improve, archived
 
 - 第一版不处理图片。
 - 材料和步骤只保存文字结构化内容。
+- 材料项只暴露 `name`、`quantity`、`unit`、`remark`，不暴露 `sortOrder`。
+- 步骤项只暴露 `title`、`description`、`durationMinutes`，不暴露 `stepNo` 或 `sortOrder`。
+- `difficulty`、`successLevel`、`prepMinutes`、`cookMinutes`、`totalMinutes`、`tasteDescription`、`briefSummary`、`nextTrySuggestion` 仍属于业务记录能力，但不再作为 MCP 写入入参暴露。
 
 ### 12.4 `food_record_query`
 

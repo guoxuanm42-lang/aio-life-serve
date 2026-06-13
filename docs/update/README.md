@@ -18,6 +18,19 @@
 - 历史文件说明
   - 现有部分历史文件未完全遵循以上命名规范，暂不做迁移与重命名（如需统一，可单独开迁移任务）
 
+## 内容维护规则
+
+每篇更新文档建议包含以下内容：
+
+- 背景：说明为什么要做这次更新。
+- 解决的问题：说明本次更新实际解决了哪些痛点、缺陷或体验问题。
+- 功能使用说明：说明用户如何使用新增或变更后的功能。
+- 本次调整：说明数据库、后端、前端、接口、统计等实际变更。
+- 验证范围：记录已执行的编译、接口、数据库或前端验证。
+- 后续建议：记录暂未完成但值得继续优化的事项。
+
+如果后续更新涉及功能入口、页面交互、字段含义、状态流转、统计口径或用户操作方式变化，必须同步更新该文档中的“功能使用说明”内容，避免只记录技术实现而缺少使用说明。
+
 ## 模块说明
 
 | 模块 | 说明 |
@@ -34,6 +47,7 @@
 
 | 日期 | 模块 | 更新主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-06-12 | thought | 闪念多类型、结构化详情与状态流转日志 | update | [2026-06-12_thought-type-detail-status-log_update.md](./2026-06-12_thought-type-detail-status-log_update.md) |
 | 2026-06-10 | thought | 闪念统计洞察与时间趋势 | update | [2026-06-10_thought-statistics-insight_update.md](./2026-06-10_thought-statistics-insight_update.md) |
 | 2026-06-05 | common | 美食记录 Agent MCP 文档 | update | [2026-06-05_common-food-record-agent-mcp-docs_update.md](./2026-06-05_common-food-record-agent-mcp-docs_update.md) |
 | 2026-06-05 | thought | 闪念主题内容模糊搜索 | update | [2026-06-05_thought-subject-fuzzy-search_update.md](./2026-06-05_thought-subject-fuzzy-search_update.md) |

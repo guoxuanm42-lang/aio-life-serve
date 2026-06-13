@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -108,8 +109,8 @@ class FoodRecordServiceImplTest {
 
         ArgumentCaptor<FoodRecordEntity> recordCaptor = ArgumentCaptor.forClass(FoodRecordEntity.class);
         verify(foodRecordMapper).updateById(recordCaptor.capture());
-        verify(ingredientMapper).update(any(FoodRecordIngredientEntity.class), any(UpdateWrapper.class));
-        verify(stepMapper).update(any(FoodRecordStepEntity.class), any(UpdateWrapper.class));
+        verify(ingredientMapper).update(isNull(), any(UpdateWrapper.class));
+        verify(stepMapper).update(isNull(), any(UpdateWrapper.class));
         assertEquals(1, recordCaptor.getValue().getIsDeleted());
         assertTrue(recordCaptor.getValue().getUpdateTime() != null);
     }

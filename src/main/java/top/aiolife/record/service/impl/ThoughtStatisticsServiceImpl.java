@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
 /**
  * 闪念统计服务实现。
  *
- * <p>用途：基于 thought 表现有数据实时聚合当前用户闪念总览、状态分布和分类分布。</p>
+ * <p>用途：基于 thought 表实时聚合当前用户的闪念总览、类型分区、分布和趋势数据。</p>
  *
  * @author Ethan
- * @date 2026-06-10
+ * @date 2026-06-12
  */
 @Service
 @RequiredArgsConstructor
@@ -49,6 +49,12 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
     private static final String STATUS_SHELVED = "shelved";
 
     private static final String STATUS_ARCHIVED = "archived";
+
+    private static final String TYPE_ACTION = "action";
+
+    private static final String TYPE_EMOTION = "emotion";
+
+    private static final String TYPE_REFLECTION = "reflection";
 
     private static final String UNKNOWN_CATEGORY_KEY = "unknown";
 
@@ -69,7 +75,7 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
      * @return 闪念统计总览视图
      *
      * @author Ethan
-     * @date 2026-06-10
+     * @date 2026-06-12
      */
     @Override
     public ThoughtStatisticsVO overview(Long userId) {
@@ -78,6 +84,7 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
         vo.setSummary(buildSummary(records));
         vo.setStatusDistribution(buildStatusDistribution(records));
         vo.setCategoryDistribution(buildCategoryDistribution(records));
+        vo.setTypeSummaries(buildTypeSummaries(records));
         return vo;
     }
 
@@ -89,7 +96,7 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
      * @return 闪念趋势统计视图
      *
      * @author Ethan
-     * @date 2026-06-10
+     * @date 2026-06-12
      */
     @Override
     public ThoughtStatisticsTrendVO trend(Long userId, ThoughtStatisticsTrendReq req) {
@@ -101,6 +108,7 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
 
         List<ThoughtEntity> filteredRecords = listRecords(userId).stream()
                 .filter(record -> isInDateRange(record.getCreateTime(), dateRange))
+                .filter(record -> matchesThoughtType(record, safeReq.getThoughtType()))
                 .filter(record -> matchesCategory(record, safeReq.getCategory(), categoryNames))
                 .filter(record -> matchesStatus(record, safeReq.getStatus()))
                 .toList();
@@ -109,7 +117,13 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
         vo.setRange(range);
         vo.setGroupBy(groupBy);
         vo.setTrend(buildTrendPoints(filteredRecords, dateRange.startDate(), dateRange.endDate(), groupBy));
-        vo.setCategoryTrends(buildCategoryTrends(filteredRecords, dateRange.startDate(), dateRange.endDate(), groupBy, categoryNames, safeReq.getCategory()));
+        vo.setCategoryTrends(buildCategoryTrends(
+                filteredRecords,
+                dateRange.startDate(),
+                dateRange.endDate(),
+                groupBy,
+                categoryNames,
+                safeReq.getCategory()));
         vo.setActivity(buildTrendPoints(filteredRecords, dateRange.startDate(), dateRange.endDate(), "day"));
         vo.setBurstDays(buildBurstDays(vo.getActivity()));
         return vo;
@@ -129,9 +143,11 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
         LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
         long totalCount = records.size();
         long pendingCount = countStatus(records, STATUS_PENDING);
-        long ongoingCount = countStatus(records, STATUS_ONGOING);
         long doneCount = countStatus(records, STATUS_DONE);
         long archivedCount = countStatus(records, STATUS_ARCHIVED);
+        List<ThoughtEntity> actionRecords = records.stream()
+                .filter(record -> matchesThoughtType(record, TYPE_ACTION))
+                .toList();
 
         ThoughtStatisticsVO.Summary summary = new ThoughtStatisticsVO.Summary();
         summary.setTotalCount(totalCount);
@@ -141,19 +157,18 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
         summary.setDoneCount(doneCount);
         summary.setArchivedCount(archivedCount);
         summary.setConversionRate(percent(doneCount, totalCount));
-        summary.setBacklogCount(pendingCount + ongoingCount);
+        summary.setBacklogCount(countStatus(actionRecords, STATUS_PENDING) + countStatus(actionRecords, STATUS_ONGOING));
         summary.setHighValueCount(archivedCount);
         return summary;
     }
 
     private List<ThoughtStatisticsVO.DistributionItem> buildStatusDistribution(List<ThoughtEntity> records) {
-        Map<String, String> statusNames = new LinkedHashMap<>();
-        statusNames.put(STATUS_PENDING, "待处理");
-        statusNames.put(STATUS_ONGOING, "进行中");
-        statusNames.put(STATUS_DONE, "已完成");
-        statusNames.put(STATUS_SHELVED, "已搁置");
-        statusNames.put(STATUS_ARCHIVED, "已归档");
+        return buildStatusDistribution(records, actionStatusNames());
+    }
 
+    private List<ThoughtStatisticsVO.DistributionItem> buildStatusDistribution(
+            List<ThoughtEntity> records,
+            Map<String, String> statusNames) {
         Map<String, Long> countMap = records.stream()
                 .map(record -> normalizeStatus(record.getStatus()))
                 .filter(statusNames::containsKey)
@@ -162,6 +177,70 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
         return statusNames.entrySet().stream()
                 .map(entry -> toDistributionItem(entry.getKey(), entry.getValue(), countMap.getOrDefault(entry.getKey(), 0L), records.size()))
                 .toList();
+    }
+
+    private List<ThoughtStatisticsVO.TypeSummary> buildTypeSummaries(List<ThoughtEntity> records) {
+        return List.of(
+                buildTypeSummary(records, TYPE_ACTION, "想法行动", actionStatusNames()),
+                buildTypeSummary(records, TYPE_EMOTION, "情绪心情", emotionStatusNames()),
+                buildTypeSummary(records, TYPE_REFLECTION, "复盘沉淀", reflectionStatusNames())
+        );
+    }
+
+    private ThoughtStatisticsVO.TypeSummary buildTypeSummary(
+            List<ThoughtEntity> records,
+            String thoughtType,
+            String typeName,
+            Map<String, String> statusNames) {
+        List<ThoughtEntity> typeRecords = records.stream()
+                .filter(record -> matchesThoughtType(record, thoughtType))
+                .toList();
+        long totalCount = typeRecords.size();
+        long doneCount = countStatus(typeRecords, STATUS_DONE);
+        long pendingCount = countStatus(typeRecords, STATUS_PENDING);
+        long ongoingCount = countStatus(typeRecords, STATUS_ONGOING);
+
+        ThoughtStatisticsVO.TypeSummary summary = new ThoughtStatisticsVO.TypeSummary();
+        summary.setThoughtType(thoughtType);
+        summary.setTypeName(typeName);
+        summary.setTotalCount(totalCount);
+        summary.setStatusDistribution(buildStatusDistribution(typeRecords, statusNames));
+        summary.setBacklogCount(TYPE_ACTION.equals(thoughtType) ? pendingCount + ongoingCount : 0);
+        summary.setDoneCount(doneCount);
+        summary.setShelvedCount(countStatus(typeRecords, STATUS_SHELVED));
+        summary.setArchivedCount(countStatus(typeRecords, STATUS_ARCHIVED));
+        summary.setConversionRate(percent(doneCount, totalCount));
+        return summary;
+    }
+
+    private Map<String, String> actionStatusNames() {
+        Map<String, String> statusNames = new LinkedHashMap<>();
+        statusNames.put(STATUS_PENDING, "待处理");
+        statusNames.put(STATUS_ONGOING, "进行中");
+        statusNames.put(STATUS_DONE, "已完成");
+        statusNames.put(STATUS_SHELVED, "已搁置");
+        statusNames.put(STATUS_ARCHIVED, "已归档");
+        return statusNames;
+    }
+
+    private Map<String, String> emotionStatusNames() {
+        Map<String, String> statusNames = new LinkedHashMap<>();
+        statusNames.put(STATUS_PENDING, "已记录");
+        statusNames.put(STATUS_ONGOING, "待观察");
+        statusNames.put(STATUS_DONE, "已缓解");
+        statusNames.put(STATUS_SHELVED, "不再关注");
+        statusNames.put(STATUS_ARCHIVED, "已沉淀");
+        return statusNames;
+    }
+
+    private Map<String, String> reflectionStatusNames() {
+        Map<String, String> statusNames = new LinkedHashMap<>();
+        statusNames.put(STATUS_PENDING, "待整理");
+        statusNames.put(STATUS_ONGOING, "整理中");
+        statusNames.put(STATUS_DONE, "已沉淀");
+        statusNames.put(STATUS_SHELVED, "暂不整理");
+        statusNames.put(STATUS_ARCHIVED, "已归档");
+        return statusNames;
     }
 
     private List<ThoughtStatisticsVO.DistributionItem> buildCategoryDistribution(List<ThoughtEntity> records) {
@@ -194,7 +273,11 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
         return categoryNames;
     }
 
-    private List<ThoughtStatisticsTrendVO.Point> buildTrendPoints(List<ThoughtEntity> records, LocalDate startDate, LocalDate endDate, String groupBy) {
+    private List<ThoughtStatisticsTrendVO.Point> buildTrendPoints(
+            List<ThoughtEntity> records,
+            LocalDate startDate,
+            LocalDate endDate,
+            String groupBy) {
         Map<String, Long> countMap = records.stream()
                 .filter(record -> record.getCreateTime() != null)
                 .collect(Collectors.groupingBy(record -> bucketKey(record.getCreateTime().toLocalDate(), groupBy), Collectors.counting()));
@@ -347,6 +430,14 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
         return Objects.equals(normalizeStatus(record.getStatus()), normalizedStatus);
     }
 
+    private boolean matchesThoughtType(ThoughtEntity record, String thoughtType) {
+        String normalizedThoughtType = normalizeThoughtTypeFilter(thoughtType);
+        if (!StringUtils.hasText(normalizedThoughtType)) {
+            return true;
+        }
+        return Objects.equals(normalizeThoughtType(record.getThoughtType()), normalizedThoughtType);
+    }
+
     private String normalizeRange(String range) {
         String normalized = StringUtils.hasText(range) ? range.trim().toLowerCase() : "30d";
         return SUPPORTED_RANGES.contains(normalized) ? normalized : "30d";
@@ -380,6 +471,19 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
         return "";
     }
 
+    private String normalizeThoughtTypeFilter(String thoughtType) {
+        if (!StringUtils.hasText(thoughtType)) {
+            return "";
+        }
+        String normalized = thoughtType.trim().toLowerCase();
+        if (Objects.equals(normalized, TYPE_ACTION)
+                || Objects.equals(normalized, TYPE_EMOTION)
+                || Objects.equals(normalized, TYPE_REFLECTION)) {
+            return normalized;
+        }
+        return "";
+    }
+
     private String categoryName(String key, Map<String, String> categoryNames) {
         return UNKNOWN_CATEGORY_KEY.equals(key) ? "未分类" : categoryNames.getOrDefault(key, "未分类");
     }
@@ -396,6 +500,10 @@ public class ThoughtStatisticsServiceImpl implements IThoughtStatisticsService {
 
     private String normalizeStatus(String status) {
         return StringUtils.hasText(status) ? status.trim().toLowerCase() : "";
+    }
+
+    private String normalizeThoughtType(String thoughtType) {
+        return StringUtils.hasText(thoughtType) ? thoughtType.trim().toLowerCase() : TYPE_ACTION;
     }
 
     private String normalizeCategory(String themeKey, Map<String, String> categoryNames) {

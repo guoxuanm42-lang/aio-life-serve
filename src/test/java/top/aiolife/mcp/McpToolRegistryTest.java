@@ -11,6 +11,8 @@ import top.aiolife.mcp.schema.McpSchemaGenerator;
 import top.aiolife.mcp.tools.FoodRecordMcpTools;
 import top.aiolife.mcp.tools.ThoughtMcpTools;
 import top.aiolife.mcp.tools.TimeRecordMcpTools;
+import top.aiolife.record.mapper.IRelaEventMapper;
+import top.aiolife.record.mapper.IThoughtMapper;
 import top.aiolife.record.service.IThoughtService;
 import top.aiolife.record.service.FoodRecordAiFacade;
 import top.aiolife.record.service.TimeRecordAiFacade;
@@ -30,7 +32,7 @@ import static org.mockito.Mockito.when;
  * MCP 工具注册器测试。
  *
  * @author Ethan
- * @date 2026-05-31
+ * @date 2026-06-10
  */
 class McpToolRegistryTest {
 
@@ -42,9 +44,10 @@ class McpToolRegistryTest {
         Set<String> names = new HashSet<>();
         tools.forEach(tool -> names.add(tool.name()));
 
-        assertEquals(5, tools.size());
-        assertEquals(5, names.size());
+        assertEquals(6, tools.size());
+        assertEquals(6, names.size());
         assertNotNull(registry.getTool("thought_save"));
+        assertNotNull(registry.getTool("thought_query"));
         assertTrue(names.contains("time_record_save"));
         assertTrue(names.contains("time_record_queryByDateRange"));
         assertTrue(names.contains("food_record_save"));
@@ -62,7 +65,10 @@ class McpToolRegistryTest {
     }
 
     private McpToolRegistry createRegistry() {
-        ThoughtMcpTools thoughtTools = new ThoughtMcpTools(mock(IThoughtService.class));
+        ThoughtMcpTools thoughtTools = new ThoughtMcpTools(
+                mock(IThoughtService.class),
+                mock(IThoughtMapper.class),
+                mock(IRelaEventMapper.class));
         TimeRecordMcpTools timeRecordTools = new TimeRecordMcpTools(mock(TimeRecordAiFacade.class));
         FoodRecordMcpTools foodRecordTools = new FoodRecordMcpTools(mock(FoodRecordAiFacade.class));
         ApplicationContext applicationContext = mock(ApplicationContext.class);

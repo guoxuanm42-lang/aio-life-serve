@@ -32,6 +32,9 @@ public class ThoughtEntity extends BaseEntity {
     @TableField("status")
     private String status;
 
+    @TableField("thought_type")
+    private String thoughtType;
+
     @TableField(exist = false)
     private List<ThoughtRelaEventEntity> events;
 }

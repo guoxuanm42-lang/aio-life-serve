@@ -10,6 +10,8 @@ import top.aiolife.mcp.schema.McpSchemaGenerator;
 import top.aiolife.mcp.tools.FoodRecordMcpTools;
 import top.aiolife.mcp.tools.ThoughtMcpTools;
 import top.aiolife.mcp.tools.TimeRecordMcpTools;
+import top.aiolife.record.mapper.IRelaEventMapper;
+import top.aiolife.record.mapper.IThoughtMapper;
 import top.aiolife.record.service.IThoughtService;
 import top.aiolife.record.service.FoodRecordAiFacade;
 import top.aiolife.record.service.TimeRecordAiFacade;
@@ -19,6 +21,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -28,7 +31,7 @@ import static org.mockito.Mockito.when;
  * MCP 工具兼容性测试。
  *
  * @author Ethan
- * @date 2026-05-31
+ * @date 2026-06-10
  */
 class McpToolCompatibilityTest {
 
@@ -41,6 +44,7 @@ class McpToolCompatibilityTest {
 
         assertEquals(Set.of(
                 "thought_save",
+                "thought_query",
                 "time_record_save",
                 "time_record_queryByDateRange",
                 "food_record_save",
@@ -93,6 +97,14 @@ class McpToolCompatibilityTest {
         assertTrue(saveProperties.containsKey("ingredients"));
         assertTrue(saveProperties.containsKey("steps"));
         assertTrue(saveProperties.containsKey("worthRedo"));
+        assertFalse(saveProperties.containsKey("difficulty"));
+        assertFalse(saveProperties.containsKey("successLevel"));
+        assertFalse(saveProperties.containsKey("prepMinutes"));
+        assertFalse(saveProperties.containsKey("cookMinutes"));
+        assertFalse(saveProperties.containsKey("totalMinutes"));
+        assertFalse(saveProperties.containsKey("tasteDescription"));
+        assertFalse(saveProperties.containsKey("briefSummary"));
+        assertFalse(saveProperties.containsKey("nextTrySuggestion"));
 
         Map<String, Object> queryProperties = registry.getTool("food_record_query").schema().inputSchema().properties();
         assertTrue(queryProperties.containsKey("keyword"));
@@ -104,7 +116,10 @@ class McpToolCompatibilityTest {
     }
 
     private McpToolRegistry createRegistry() {
-        ThoughtMcpTools thoughtTools = new ThoughtMcpTools(mock(IThoughtService.class));
+        ThoughtMcpTools thoughtTools = new ThoughtMcpTools(
+                mock(IThoughtService.class),
+                mock(IThoughtMapper.class),
+                mock(IRelaEventMapper.class));
         TimeRecordMcpTools timeRecordTools = new TimeRecordMcpTools(mock(TimeRecordAiFacade.class));
         FoodRecordMcpTools foodRecordTools = new FoodRecordMcpTools(mock(FoodRecordAiFacade.class));
         ApplicationContext applicationContext = mock(ApplicationContext.class);
