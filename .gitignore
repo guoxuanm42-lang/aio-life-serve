@@ -36,3 +36,6 @@ docker/volumes/*/data/
 # Local initial data (ignore to avoid environment-specific drift)
 /sql/initial
 
+# Local online executed SQL patches (do not commit environment-specific runbooks)
+/sql/executed-online/
+

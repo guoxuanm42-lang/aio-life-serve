@@ -284,6 +284,34 @@ AND status IN (pending, ongoing)
 - 表单 label、输入内容、类型按钮、动作按钮、保存按钮放大点击区域。
 - 低频字段不再默认铺满页面，按动作出现或折叠展示。
 
+### MCP 工具同步升级
+
+闪念 MCP 工具同步适配多类型和结构化详情。
+
+`thought_save` 新增入参：
+
+- `thoughtType`：闪念类型，支持 `action` / `emotion` / `reflection`，不传默认 `action`。
+- `changeReason`：状态变化原因，用于状态流转日志。
+- `createTime` / `recordTime` / `happenedAt`：闪念创建时间或实际发生时间。
+- `updateTime`：闪念更新时间。
+- `events[].eventTime`：关联事件发生时间。
+- `actionDetail`：行动型结构化详情。
+- `emotionDetail`：情绪型结构化详情。
+- `reflectionDetail`：复盘沉淀型结构化详情。
+
+`thought_query` 新增能力：
+
+- 支持按 `thoughtType` 查询。
+- 返回 `thoughtType` 和 `thoughtTypeName`。
+- `statusName` 按闪念类型返回不同中文文案。
+
+Agent 调用规则：
+
+- 普通想法、行动、待办类记录可以不传 `thoughtType`，默认保存为 `action`。
+- 情绪心情类记录必须传 `thoughtType=emotion`，并尽量填写 `emotionDetail`。
+- 复盘沉淀类记录必须传 `thoughtType=reflection`，并尽量填写 `reflectionDetail`。
+- 服务端只保存当前 `thoughtType` 对应的 detail，避免多类型结构化字段混写。
+
 ## 数据库执行记录
 
 本次本地数据库已补充执行：
@@ -339,9 +367,17 @@ mvn -DskipTests compile
 - 前端验证：
   - `git diff --check` 通过。
   - `pnpm --filter @vben/web-antd typecheck` 仍因仓库既有文件失败，失败项不包含 `my-hub/think` 本次新增或修改文件。
+- MCP 验证：
+  - 使用 JDK 21 执行 `mvn -DskipTests compile` 通过。
+  - 执行 `mvn -Dtest=McpSchemaGeneratorTest test` 通过。
+  - 执行 `mvn -Dtest=McpToolRegistryTest test` 通过。
+  - `thought_save` 已支持 `thoughtType/changeReason/createTime/updateTime/recordTime/happenedAt/actionDetail/emotionDetail/reflectionDetail`。
+  - `thought_save` 事件已支持 `eventTime`。
+  - `thought_query` 已支持 `thoughtType` 筛选，并返回类型和类型化状态文案。
 
 ## 后续建议
 
 - 将当前损坏的 `sql/2026-06-12.sql` 中文注释修复为 UTF-8，避免后续整文件执行失败。
 - 后续可以在状态动作上补充更细的必填校验，例如归档时要求填写价值等级，搁置时要求填写搁置原因。
+- 后续如果 Agent 需要读取完整结构化详情，可以新增 `thought_detail` MCP 工具。
 - AI 分析优先读取 `thought_type`、三类 detail 表和 `thought_status_log`，再辅助读取原始正文。

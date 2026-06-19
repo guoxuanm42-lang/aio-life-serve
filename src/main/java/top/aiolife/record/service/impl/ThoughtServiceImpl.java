@@ -38,7 +38,7 @@ import java.util.concurrent.TimeUnit;
  * 闪念服务实现，负责主记录、事件流和结构化详情的事务化读写。
  *
  * @author Ethan
- * @date 2026-06-12
+ * @date 2026-06-13
  */
 @Service
 @RequiredArgsConstructor
@@ -95,7 +95,7 @@ public class ThoughtServiceImpl implements IThoughtService {
      * @return 统一返回结构，data 表示是否保存成功
      *
      * @author Ethan
-     * @date 2026-06-12
+     * @date 2026-06-13
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -111,6 +111,7 @@ public class ThoughtServiceImpl implements IThoughtService {
         try {
             ThoughtEntity entity = buildThoughtEntity(req, userId, false);
             entity.fillCreateCommonField(userId);
+            applyRequestedTimes(entity, req);
             thoughtMapper.insert(entity);
             replaceEvents(entity.getId(), userId, req.getEvents());
             saveCurrentDetail(entity.getId(), userId, entity.getThoughtType(), req);
@@ -132,7 +133,7 @@ public class ThoughtServiceImpl implements IThoughtService {
      * @return 统一返回结构，data 表示是否更新成功
      *
      * @author Ethan
-     * @date 2026-06-12
+     * @date 2026-06-13
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -149,6 +150,7 @@ public class ThoughtServiceImpl implements IThoughtService {
         ThoughtEntity entity = buildThoughtEntity(req, userId, true);
         entity.setId(req.getId());
         entity.fillUpdateCommonField(userId);
+        applyRequestedTimes(entity, req);
         LambdaQueryWrapper<ThoughtEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ThoughtEntity::getId, req.getId());
         wrapper.eq(ThoughtEntity::getUserId, userId);
@@ -310,7 +312,23 @@ public class ThoughtServiceImpl implements IThoughtService {
             eventEntity.setThoughtId(thoughtId);
             eventEntity.setContent(eventReq.getContent().trim());
             eventEntity.fillCreateCommonField(userId);
+            if (eventReq.getCreateTime() != null) {
+                eventEntity.setCreateTime(eventReq.getCreateTime());
+                eventEntity.setUpdateTime(eventReq.getCreateTime());
+            }
             relaEventMapper.insert(eventEntity);
+        }
+    }
+
+    private void applyRequestedTimes(ThoughtEntity entity, ThoughtSaveReq req) {
+        if (entity == null || req == null) {
+            return;
+        }
+        if (req.getCreateTime() != null) {
+            entity.setCreateTime(req.getCreateTime());
+        }
+        if (req.getUpdateTime() != null) {
+            entity.setUpdateTime(req.getUpdateTime());
         }
     }
 

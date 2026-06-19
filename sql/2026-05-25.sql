@@ -85,9 +85,9 @@ UPDATE `sys_menu`
 SET
   `parent_id` = 0,
   `name` = 'think',
-  `path` = '/think',
-  `component` = 'BasicLayout',
-  `redirect` = '/think/all',
+  `path` = '/think/all',
+  `component` = 'my-hub/think/list',
+  `redirect` = NULL,
   `sort` = 3,
   `meta` = JSON_SET(
     COALESCE(`meta`, JSON_OBJECT()),
@@ -102,27 +102,27 @@ WHERE `id` = 1503;
 INSERT INTO `sys_menu`
 (`id`,`parent_id`,`name`,`path`,`component`,`redirect`,`meta`,`roles`,`sort`,`status`,`is_deleted`)
 VALUES
-(15030, 1503, 'thinkAll', '/think/all', 'my-hub/think/list', NULL,
+(15030, 1503, 'thinkAll', '/think/all-hidden', 'my-hub/think/list', NULL,
  JSON_OBJECT('title',CONVERT(0xE585A8E983A8 USING utf8mb4),'keepAlive',true,'backTop',false),
- NULL, 0, 1, 0),
+ NULL, 0, 0, 0),
 (15031, 1503, 'thinkWork', '/think/work', 'my-hub/think/list', NULL,
  JSON_OBJECT('title',CONVERT(0xE5B7A5E4BD9C USING utf8mb4),'keepAlive',true,'backTop',false),
- NULL, 1, 1, 0),
+ NULL, 1, 0, 0),
 (15032, 1503, 'thinkLife', '/think/life', 'my-hub/think/list', NULL,
  JSON_OBJECT('title',CONVERT(0xE7949FE6B4BB USING utf8mb4),'keepAlive',true,'backTop',false),
- NULL, 2, 1, 0),
+ NULL, 2, 0, 0),
 (15033, 1503, 'thinkStudy', '/think/study', 'my-hub/think/list', NULL,
  JSON_OBJECT('title',CONVERT(0xE5ADA6E4B9A0 USING utf8mb4),'keepAlive',true,'backTop',false),
- NULL, 3, 1, 0),
+ NULL, 3, 0, 0),
 (15034, 1503, 'thinkSocial', '/think/social', 'my-hub/think/list', NULL,
  JSON_OBJECT('title',CONVERT(0xE7A4BEE4BAA4 USING utf8mb4),'keepAlive',true,'backTop',false),
- NULL, 4, 1, 0),
+ NULL, 4, 0, 0),
 (15035, 1503, 'thinkCreation', '/think/creation', 'my-hub/think/list', NULL,
  JSON_OBJECT('title',CONVERT(0xE5889BE4BD9C USING utf8mb4),'keepAlive',true,'backTop',false),
- NULL, 5, 1, 0),
+ NULL, 5, 0, 0),
 (15036, 1503, 'thinkTravel', '/think/travel', 'my-hub/think/list', NULL,
  JSON_OBJECT('title',CONVERT(0xE69785E8A18C USING utf8mb4),'keepAlive',true,'backTop',false),
- NULL, 6, 1, 0)
+ NULL, 6, 0, 0)
 ON DUPLICATE KEY UPDATE
   `parent_id` = VALUES(`parent_id`),
   `name` = VALUES(`name`),
@@ -134,4 +134,3 @@ ON DUPLICATE KEY UPDATE
   `sort` = VALUES(`sort`),
   `status` = VALUES(`status`),
   `is_deleted` = VALUES(`is_deleted`);
-

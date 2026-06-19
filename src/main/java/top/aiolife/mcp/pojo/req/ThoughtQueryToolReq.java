@@ -10,7 +10,7 @@ import java.time.LocalDate;
  * 闪念 MCP 查询请求。
  *
  * @author Ethan
- * @date 2026-06-10
+ * @date 2026-06-13
  */
 @Data
 public class ThoughtQueryToolReq {
@@ -29,6 +29,9 @@ public class ThoughtQueryToolReq {
 
     @McpField(description = "状态：pending/ongoing/done/shelved/archived，也支持中文状态")
     private String status;
+
+    @McpField(description = "闪念类型：action 想法行动、emotion 情绪心情、reflection 复盘沉淀；不传查询全部")
+    private String thoughtType;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     @McpField(description = "创建开始日期，格式 yyyy-MM-dd")

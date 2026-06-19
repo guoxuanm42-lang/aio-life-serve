@@ -157,8 +157,8 @@ method.getParameterCount() == 1
 | --- | --- | --- |
 | `food_record_save` | 写入 | 保存美食记录文字内容，支持创建或更新，创建时支持幂等键，第一版不处理图片 |
 | `food_record_query` | 查询 | 查询当前用户美食记录历史，返回适合 Agent 阅读的文字摘要，不包含图片 |
-| `thought_query` | 查询 | 查询当前用户闪念记录，支持关键词、主题、正文、分类、状态、创建日期范围和事件筛选，返回适合 Agent 阅读的摘要列表 |
-| `thought_save` | 写入 | 保存闪念，可附带多个关联事件 |
+| `thought_query` | 查询 | 查询当前用户闪念记录，支持关键词、类型、主题、正文、分类、状态、创建日期范围和事件筛选，返回适合 Agent 阅读的摘要列表 |
+| `thought_save` | 写入 | 保存闪念，支持想法行动、情绪心情、复盘沉淀三类记录，可附带结构化详情和多个关联事件 |
 | `time_record_save` | 写入 | 保存时间记录，可附带练习记录 |
 | `time_record_queryByDateRange` | 查询 | 查询指定日期范围内的时间记录 |
 
@@ -384,6 +384,7 @@ Agent 只有在用户明确要求保存、写入、记录时，才调用写入�
 - `keyword`：关键词，同时模糊匹配主题、正文和关联事件内容。
 - `subject`：主题关键词，只匹配闪念主题。
 - `content`：正文关键词，只匹配闪念正文。
+- `thoughtType`：闪念类型，支持 `action` / `emotion` / `reflection`；不传查询全部类型。
 - `themeKey`：分类主题色。
 - `status`：状态。
 - `startDate` / `endDate`：按创建时间筛选，格式 `yyyy-MM-dd`。
@@ -400,7 +401,15 @@ Agent 只有在用户明确要求保存、写入、记录时，才调用写入�
 - 单条 `content` 最多返回 1000 字。
 - 每条闪念最多返回 5 条关联事件。
 - 单条事件内容最多返回 300 字。
-- 返回 `categoryName` 和 `statusName`，供 Agent 直接阅读。
+- 返回 `categoryName`、`thoughtTypeName` 和按类型转换后的 `statusName`，供 Agent 直接阅读。
+
+闪念类型：
+
+| 类型 | 含义 |
+| --- | --- |
+| `action` | 想法行动 |
+| `emotion` | 情绪心情 |
+| `reflection` | 复盘沉淀 |
 
 ### 12.2 `thought_save`
 
@@ -408,9 +417,19 @@ Agent 只有在用户明确要求保存、写入、记录时，才调用写入�
 
 - `subject`：主题，可选；为空时服务端尝试从 `content` 第一行提炼，最长取 60 字符。
 - `content`：内容。
+- `thoughtType`：闪念类型，支持 `action` / `emotion` / `reflection`；不传或非法时默认 `action`。
 - `themeKey`：主题色。
 - `status`：状态。
+- `changeReason`：状态变化原因，用于写入状态流转日志。
+- `createTime`：闪念创建时间/实际发生时间，格式 `yyyy-MM-dd HH:mm:ss`。
+- `updateTime`：闪念更新时间，格式 `yyyy-MM-dd HH:mm:ss`。
+- `recordTime` / `happenedAt`：`createTime` 的别名。
+- `actionDetail`：行动型结构化详情，`thoughtType=action` 时生效。
+- `emotionDetail`：情绪型结构化详情，`thoughtType=emotion` 时生效。
+- `reflectionDetail`：复盘沉淀型结构化详情，`thoughtType=reflection` 时生效。
 - `events[].content`：关联事件内容。
+- `events[].createTime`：关联事件发生时间，格式 `yyyy-MM-dd HH:mm:ss`。
+- `events[].eventTime` / `events[].recordTime` / `events[].happenedAt`：`events[].createTime` 的别名。
 - `idempotencyKey`：幂等键。
 
 主题色限制：
@@ -440,6 +459,55 @@ pending, ongoing, done, shelved, archived
 ```text
 pending
 ```
+
+闪念类型为空或非法时默认：
+
+```text
+action
+```
+
+结构化详情字段：
+
+`actionDetail`：
+
+- `resultSummary`：处理结果。
+- `reflection`：心得/复盘。
+- `nextAction`：后续动作。
+- `shelveReason`：搁置原因。
+- `shelveReasonTag`：搁置原因标签，支持 `unrealistic` / `no_time` / `low_value` / `blocked` / `duplicate` / `other`。
+- `restartPolicy`：是否可重启，支持 `no` / `later` / `conditional`。
+- `archiveReason`：归档原因。
+- `valueLevel`：价值等级，支持 `normal` / `valuable` / `high`。
+- `archiveType`：沉淀类型，支持 `experience` / `lesson` / `method` / `inspiration` / `decision`。
+
+`emotionDetail`：
+
+- `emotionType`：情绪类型，支持 `sad` / `angry` / `anxious` / `stress` / `happy` / `excited` / `moved` / `inspired`。
+- `emotionIntensity`：情绪强度，建议 1-5。
+- `emotionTrigger`：触发原因。
+- `emotionNeed`：背后需求。
+- `copingAction`：缓解动作。
+- `reflectionSummary`：复盘结论。
+- `ignoredReason`：不再关注原因。
+
+`reflectionDetail`：
+
+- `reflectionSummary`：复盘结论。
+- `lessonType`：经验/教训/方法/决策，支持 `experience` / `lesson` / `method` / `decision`。
+- `archiveType`：沉淀类型，支持 `experience` / `lesson` / `method` / `inspiration` / `decision`。
+- `valueLevel`：价值等级，支持 `normal` / `valuable` / `high`。
+- `improvementAction`：改进动作。
+- `relatedProject`：关联项目。
+- `tags`：标签，多个标签可用逗号分隔。
+
+Agent 调用建议：
+
+- 普通想法、行动、待办类记录可以不传 `thoughtType`，默认写为 `action`。
+- 记录情绪、心情、感受时必须传 `thoughtType=emotion`，并尽量填写 `emotionDetail`。
+- 记录复盘、经验、教训、方法、决策依据时必须传 `thoughtType=reflection`，并尽量填写 `reflectionDetail`。
+- 用户明确说“记录昨天/上周/某天的闪念”时，Agent 应将实际发生时间写入 `createTime`、`recordTime` 或 `happenedAt`，不要只依赖系统入库时间。
+- 关联事件有独立发生时间时，应写入 `events[].eventTime`。
+- 不要同时混填三类 detail；服务端只保存当前 `thoughtType` 对应的 detail。
 
 ### 12.3 `food_record_save`
 

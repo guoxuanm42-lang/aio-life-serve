@@ -24,6 +24,13 @@
 
 ## 更新记录
 
+### 2026-06-13
+
+- 升级 `thought_save`，支持 `thoughtType`、`changeReason` 和三类结构化详情对象。
+- 升级 `thought_query`，支持按 `thoughtType` 筛选，并返回类型名称和类型化状态文案。
+- 升级 `thought_save` 时间字段，支持主记录 `createTime` / `updateTime` / `recordTime` / `happenedAt` 和事件 `eventTime`。
+- 更新 MCP 调用原则和 Streamable HTTP 示例，明确 Agent 记录情绪/复盘时必须传对应闪念类型。
+
 ### 2026-06-05
 
 - 新增 `food-record-agent-prompt.md`，沉淀美食记录 Agent 提示词。

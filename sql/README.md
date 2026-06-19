@@ -83,3 +83,50 @@ CREATE TABLE IF NOT EXISTS `task_type` (
 - `02_init_data.sql`：初始化数据
 
 日常开发新增变更时，优先写入 `sql/YYYY-MM-DD.sql` 增量脚本。确认功能稳定后，再按需要同步整理到 `sql/initial/` 的初始化脚本中。
+## 六、线上已执行 SQL 本地归档
+
+`sql/executed-online/` 目录用于记录已经在服务器数据库执行过的 SQL 脚本副本，仅作为本地执行流水，不提交到 Git 仓库。
+
+该目录已加入 `.gitignore`：
+
+```gitignore
+/sql/executed-online/
+```
+
+每次线上数据库执行 SQL 后，必须复制一份最终执行脚本到 `sql/executed-online/`，并使用递增编号区分执行顺序：
+
+```text
+001_2026-06-16_cloud_deploy_to_prod_thought_detail.sql
+002_2026-06-20_xxx.sql
+003_2026-07-01_xxx.sql
+```
+
+编号表示线上执行顺序，不表示业务版本号。脚本一旦标记为 `EXECUTED`，禁止修改正文；如需修正，新增下一个编号脚本。
+
+每个已执行脚本顶部必须包含执行标记区：
+
+```sql
+-- Execute Record
+-- Version: 001
+-- Status: EXECUTED
+-- Environment: production
+-- Database: aio-life
+-- ExecutedAt: 2026-06-16 13:30:00
+-- ExecutedBy: Ethan
+-- SourceFiles:
+--   sql/2026-06-12.sql
+--   sql/2026-06-12_thought_status_log.sql
+-- GitBranch: prod-serve
+-- GitCommit: e35b048
+-- Remark: cloud-deploy-serve upgrade to prod-serve
+```
+
+`Status` 仅允许使用以下值：
+
+```text
+PENDING   已整理，未执行
+EXECUTED  已在线上执行
+FAILED    执行失败，需要处理
+REPLACED  被后续脚本替代
+SKIPPED   确认无需执行
+```

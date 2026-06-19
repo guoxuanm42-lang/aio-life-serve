@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
  * 闪念 MCP 工具，提供闪念查询和保存能力。
  *
  * @author Ethan
- * @date 2026-06-10
+ * @date 2026-06-13
  */
 @Component
 @RequiredArgsConstructor
@@ -62,6 +62,10 @@ public class ThoughtMcpTools {
             "pending", "ongoing", "done", "shelved", "archived"
     );
 
+    private static final Set<String> ALLOWED_THOUGHT_TYPES = Set.of(
+            "action", "emotion", "reflection"
+    );
+
     private static final Map<String, String> CATEGORY_NAMES = Map.of(
             "cyan", "工作",
             "green", "生活",
@@ -73,12 +77,10 @@ public class ThoughtMcpTools {
             "orange", "旅行"
     );
 
-    private static final Map<String, String> STATUS_NAMES = Map.of(
-            "pending", "待处理",
-            "ongoing", "进行中",
-            "done", "已完成",
-            "shelved", "已搁置",
-            "archived", "已归档"
+    private static final Map<String, String> THOUGHT_TYPE_NAMES = Map.of(
+            "action", "想法行动",
+            "emotion", "情绪心情",
+            "reflection", "复盘沉淀"
     );
 
     private final IThoughtService thoughtService;
@@ -88,15 +90,15 @@ public class ThoughtMcpTools {
     /**
      * 查询当前用户闪念摘要列表。
      *
-     * @param req 闪念查询工具请求，包含关键词、分类、状态、日期范围、事件、分页和排序条件
+     * @param req 闪念查询工具请求，包含关键词、类型、分类、状态、日期范围、事件、分页和排序条件
      * @return 统一返回结构，data 为适合 Agent 阅读的闪念摘要分页结果
      *
      * @author Ethan
-     * @date 2026-06-10
+     * @date 2026-06-13
      */
     @McpOperation(
             name = "thought_query",
-            description = "查询当前用户的闪念记录，支持按关键词、主题、正文、分类、状态和创建日期范围筛选，返回适合 Agent 阅读的摘要列表"
+            description = "查询当前用户的闪念记录，支持按关键词、类型、主题、正文、分类、状态和创建日期范围筛选，返回适合 Agent 阅读的摘要列表"
     )
     public ApiResponse<ThoughtQueryToolResp> thoughtQuery(ThoughtQueryToolReq req) {
         long userId = StpUtil.getLoginIdAsLong();
@@ -132,34 +134,45 @@ public class ThoughtMcpTools {
     /**
      * 保存一条闪念。
      *
-     * @param req 闪念保存工具请求，包含主题、内容、状态、主题色、事件流和幂等键
+     * @param req 闪念保存工具请求，包含主题、内容、类型、状态、主题色、结构化详情、事件流和幂等键
      * @return 统一返回结构，data 为是否保存成功
      *
      * @author Ethan
-     * @date 2026-05-31
+     * @date 2026-06-13
      */
     @McpOperation(
             name = "thought_save",
-            description = "保存一条想法，并可附带多个关联事件"
+            description = "保存一条闪念，支持想法行动、情绪心情、复盘沉淀三类记录，并可附带结构化详情和多个关联事件"
     )
     public ApiResponse<Boolean> thoughtSave(ThoughtSaveToolReq req) {
-        ThoughtSaveReq saveReq = new ThoughtSaveReq();
-        saveReq.setSubject(req.getSubject());
-        saveReq.setContent(req.getContent());
-        saveReq.setThemeKey(req.getThemeKey());
-        saveReq.setStatus(req.getStatus());
+        ThoughtSaveToolReq safeReq = req == null ? new ThoughtSaveToolReq() : req;
+        String thoughtType = normalizeThoughtTypeOrDefault(safeReq.getThoughtType());
 
-        List<ThoughtSaveToolEventReq> events = req.getEvents();
+        ThoughtSaveReq saveReq = new ThoughtSaveReq();
+        saveReq.setSubject(safeReq.getSubject());
+        saveReq.setContent(safeReq.getContent());
+        saveReq.setThemeKey(safeReq.getThemeKey());
+        saveReq.setStatus(safeReq.getStatus());
+        saveReq.setThoughtType(thoughtType);
+        saveReq.setChangeReason(safeReq.getChangeReason());
+        saveReq.setCreateTime(safeReq.getCreateTime());
+        saveReq.setUpdateTime(safeReq.getUpdateTime());
+        saveReq.setActionDetail(safeReq.getActionDetail());
+        saveReq.setEmotionDetail(safeReq.getEmotionDetail());
+        saveReq.setReflectionDetail(safeReq.getReflectionDetail());
+
+        List<ThoughtSaveToolEventReq> events = safeReq.getEvents();
         if (events != null) {
             saveReq.setEvents(events.stream().map(e -> {
                 ThoughtSaveEventReq eventReq = new ThoughtSaveEventReq();
                 eventReq.setContent(e.getContent());
+                eventReq.setCreateTime(e.getCreateTime());
                 return eventReq;
             }).toList());
         }
 
         long userId = StpUtil.getLoginIdAsLong();
-        return thoughtService.save(saveReq, userId, req.getIdempotencyKey());
+        return thoughtService.save(saveReq, userId, safeReq.getIdempotencyKey());
     }
 
     private LambdaQueryWrapper<ThoughtEntity> buildQueryWrapper(long userId,
@@ -178,6 +191,11 @@ public class ThoughtMcpTools {
         String status = normalizeStatus(req.getStatus());
         if (StringUtils.hasText(status)) {
             wrapper.eq(ThoughtEntity::getStatus, status);
+        }
+
+        String thoughtType = normalizeThoughtTypeFilter(req.getThoughtType());
+        if (StringUtils.hasText(thoughtType)) {
+            wrapper.eq(ThoughtEntity::getThoughtType, thoughtType);
         }
 
         if (StringUtils.hasText(req.getSubject())) {
@@ -303,7 +321,9 @@ public class ThoughtMcpTools {
         item.setThemeKey(record.getThemeKey());
         item.setCategoryName(categoryName(record.getThemeKey()));
         item.setStatus(record.getStatus());
-        item.setStatusName(statusName(record.getStatus()));
+        item.setThoughtType(normalizeThoughtTypeOrDefault(record.getThoughtType()));
+        item.setThoughtTypeName(thoughtTypeName(record.getThoughtType()));
+        item.setStatusName(statusName(record.getStatus(), record.getThoughtType()));
         item.setCreateTime(record.getCreateTime());
         item.setUpdateTime(record.getUpdateTime());
         item.setEvents(toQueryEvents(events));
@@ -366,6 +386,19 @@ public class ThoughtMcpTools {
         };
     }
 
+    private String normalizeThoughtTypeFilter(String thoughtType) {
+        if (!StringUtils.hasText(thoughtType)) {
+            return "";
+        }
+        String normalized = thoughtType.trim().toLowerCase();
+        return ALLOWED_THOUGHT_TYPES.contains(normalized) ? normalized : "";
+    }
+
+    private String normalizeThoughtTypeOrDefault(String thoughtType) {
+        String normalized = normalizeThoughtTypeFilter(thoughtType);
+        return StringUtils.hasText(normalized) ? normalized : "action";
+    }
+
     private String normalizeSortBy(String sortBy) {
         if (!StringUtils.hasText(sortBy)) {
             return "updateTime";
@@ -386,9 +419,41 @@ public class ThoughtMcpTools {
         return StringUtils.hasText(normalized) ? CATEGORY_NAMES.getOrDefault(normalized, "未分类") : "未分类";
     }
 
-    private String statusName(String status) {
+    private String thoughtTypeName(String thoughtType) {
+        return THOUGHT_TYPE_NAMES.getOrDefault(normalizeThoughtTypeOrDefault(thoughtType), "想法行动");
+    }
+
+    private String statusName(String status, String thoughtType) {
         String normalized = normalizeStatus(status);
-        return StringUtils.hasText(normalized) ? STATUS_NAMES.getOrDefault(normalized, "未知状态") : "未知状态";
+        if (!StringUtils.hasText(normalized)) {
+            return "未知状态";
+        }
+        return switch (normalizeThoughtTypeOrDefault(thoughtType)) {
+            case "emotion" -> switch (normalized) {
+                case "pending" -> "已记录";
+                case "ongoing" -> "待观察";
+                case "done" -> "已缓解";
+                case "shelved" -> "不再关注";
+                case "archived" -> "已沉淀";
+                default -> "未知状态";
+            };
+            case "reflection" -> switch (normalized) {
+                case "pending" -> "待整理";
+                case "ongoing" -> "整理中";
+                case "done" -> "已沉淀";
+                case "shelved" -> "暂不整理";
+                case "archived" -> "已归档";
+                default -> "未知状态";
+            };
+            default -> switch (normalized) {
+                case "pending" -> "待处理";
+                case "ongoing" -> "进行中";
+                case "done" -> "已完成";
+                case "shelved" -> "已搁置";
+                case "archived" -> "已归档";
+                default -> "未知状态";
+            };
+        };
     }
 
     private String truncate(String value, int limit) {

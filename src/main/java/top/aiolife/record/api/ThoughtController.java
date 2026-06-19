@@ -18,8 +18,10 @@ import top.aiolife.record.mapper.IThoughtMapper;
 import top.aiolife.record.pojo.entity.ThoughtRelaEventEntity;
 import top.aiolife.record.pojo.entity.ThoughtEntity;
 import top.aiolife.record.pojo.req.CommonReq;
+import top.aiolife.record.pojo.req.ThoughtExportReq;
 import top.aiolife.record.pojo.req.ThoughtSaveReq;
 import top.aiolife.record.pojo.vo.ThoughtDetailVO;
+import top.aiolife.record.service.IThoughtExportService;
 import top.aiolife.record.service.IThoughtService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +34,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +51,7 @@ import java.util.UUID;
  * 闪念（思考）接口
  *
  * @author Ethan
- * @date 2026-06-05
+ * @date 2026-06-13
  */
 @Slf4j
 @RestController
@@ -56,6 +63,8 @@ public class ThoughtController {
     private final IRelaEventMapper relaEventMapper;
 
     private final IThoughtService thoughtService;
+
+    private final IThoughtExportService thoughtExportService;
 
     private final MinioUtil minioUtil;
 
@@ -75,6 +84,8 @@ public class ThoughtController {
     private static final Set<String> ALLOWED_THOUGHT_TYPES = Set.of(
             "action", "emotion", "reflection"
     );
+
+    private static final DateTimeFormatter EXPORT_FILE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
     private static String normalizeStatus(String status) {
         if (status == null) {
@@ -111,6 +122,14 @@ public class ThoughtController {
         return normalized == null ? "action" : normalized;
     }
 
+    /**
+     * 获取闪念主表 Mapper。
+     *
+     * @return 闪念主表 Mapper
+     *
+     * @author Ethan
+     * @date 2026-06-13
+     */
     public IThoughtMapper getBaseMapper() {
         return thoughtMapper;
     }
@@ -181,7 +200,56 @@ public class ThoughtController {
 
         return ApiResponse.success(objectPageResp);
     }
+
+    /**
+     * 导出当前用户的闪念数据 Excel 文件。
+     *
+     * <p>用途：按当前筛选条件导出闪念主表、事件流、结构化详情和状态日志，便于版本迭代留档与人工核对。</p>
+     *
+     * @param themeKey 分类主题 key，可为空
+     * @param status 状态筛选值，可为空
+     * @param thoughtType 闪念类型筛选值，可为空
+     * @param subject 主题关键词，可为空
+     * @param response Http 响应对象，返回 xlsx 文件流
+     * @throws IOException 写入响应流失败时抛出
+     *
+     * @author Ethan
+     * @date 2026-06-13
+     */
+    @GetMapping("/export")
+    public void export(
+            @RequestParam(required = false) String themeKey,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String thoughtType,
+            @RequestParam(required = false) String subject,
+            HttpServletResponse response) throws IOException {
+        long userId = StpUtil.getLoginIdAsLong();
+        ThoughtExportReq req = new ThoughtExportReq();
+        req.setThemeKey(themeKey);
+        req.setStatus(status);
+        req.setThoughtType(thoughtType);
+        req.setSubject(subject);
+        thoughtExportService.validateExportable(userId, req);
+
+        String filename = "thought-export-" + LocalDateTime.now().format(EXPORT_FILE_TIME_FORMATTER) + ".xlsx";
+        String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.setHeader("Content-Disposition", "attachment; filename*=UTF-8''" + encodedFilename);
+        thoughtExportService.exportThoughts(userId, req, response.getOutputStream());
+    }
     
+    /**
+     * 保存当前用户的闪念记录。
+     *
+     * <p>用途：前端提交新增闪念主表、事件流和结构化详情，后端落库并记录初始状态日志。</p>
+     *
+     * @param req 闪念保存请求体，包含 subject、content、status、thoughtType、events 和 detail 信息
+     * @return 统一返回结构，data 表示是否保存成功
+     *
+     * @author Ethan
+     * @date 2026-06-13
+     */
     @PostMapping("/save")
     public ApiResponse<Boolean> save(@RequestBody ThoughtSaveReq req) {
         long loginId = StpUtil.getLoginIdAsLong();
@@ -223,15 +291,15 @@ public class ThoughtController {
     }
 
     /**
-     * ?????????
+     * 批量删除当前用户的闪念记录。
      *
-     * <p>????????? ID ???????????????????????</p>
+     * <p>用途：按 ID 列表删除闪念主记录、事件流、结构化详情和状态日志。</p>
      *
-     * @param commonReq ?????????? idList
-     * @return ???????data ????????
+     * @param commonReq 批量删除请求体，包含 idList
+     * @return 统一返回结构，data 表示是否删除成功
      *
      * @author Ethan
-     * @date 2026-06-12
+     * @date 2026-06-13
      */
     @PostMapping("/batchDelete")
     public ApiResponse<Boolean> delete(@RequestBody CommonReq commonReq) {

@@ -10,7 +10,7 @@ import java.util.List;
  * 闪念 MCP 查询返回结果。
  *
  * @author Ethan
- * @date 2026-06-10
+ * @date 2026-06-13
  */
 @Data
 public class ThoughtQueryToolResp {
@@ -29,7 +29,7 @@ public class ThoughtQueryToolResp {
      * 闪念查询结果条目。
      *
      * @author Ethan
-     * @date 2026-06-10
+     * @date 2026-06-13
      */
     @Data
     public static class Item {
@@ -49,6 +49,10 @@ public class ThoughtQueryToolResp {
         private String status;
 
         private String statusName;
+
+        private String thoughtType;
+
+        private String thoughtTypeName;
 
         @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         private LocalDateTime createTime;
