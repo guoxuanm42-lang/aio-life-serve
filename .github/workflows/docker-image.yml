@@ -22,23 +22,36 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: aio-life-serve
+  ALIYUN_NAMESPACE: aio-life
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
         if: github.event_name != 'pull_request'
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - id: meta
+      - name: Login to Aliyun ACR
+        uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ${{ secrets.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      - name: Extract GHCR metadata
+        id: ghcr-meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
@@ -49,13 +62,29 @@ jobs:
           flavor: |
             latest=${{ github.ref_name == 'prod-serve' }}
 
-      - uses: docker/build-push-action@v6
+      - name: Extract Aliyun ACR metadata
+        id: aliyun-meta
+        uses: docker/metadata-action@v5
+        if: github.event_name != 'pull_request'
+        with:
+          images: ${{ secrets.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+          flavor: |
+            latest=${{ github.ref_name == 'prod-serve' }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ steps.ghcr-meta.outputs.tags }}
+            ${{ steps.aliyun-meta.outputs.tags }}
+          labels: ${{ steps.ghcr-meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
