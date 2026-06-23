@@ -5,15 +5,18 @@ import org.junit.jupiter.api.Test;
 import top.aiolife.mcp.annotation.McpField;
 import top.aiolife.mcp.annotation.McpOperation;
 import top.aiolife.mcp.pojo.req.FoodRecordSaveToolReq;
+import top.aiolife.mcp.pojo.req.ProblemNoteSaveToolReq;
 import top.aiolife.mcp.pojo.req.ThoughtSaveToolReq;
 import top.aiolife.mcp.pojo.req.TimeRecordSaveToolReq;
 import top.aiolife.mcp.schema.McpFieldSchemaResolver;
 import top.aiolife.mcp.schema.McpSchemaGenerator;
 import top.aiolife.mcp.tools.FoodRecordMcpTools;
+import top.aiolife.mcp.tools.ProblemNoteMcpTools;
 import top.aiolife.mcp.tools.ThoughtMcpTools;
 import top.aiolife.mcp.tools.TimeRecordMcpTools;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -116,6 +119,29 @@ class McpSchemaGeneratorTest {
         assertTrue(stepProperties.containsKey("durationMinutes"));
         assertFalse(stepProperties.containsKey("stepNo"));
         assertFalse(stepProperties.containsKey("sortOrder"));
+    }
+
+    @Test
+    void shouldGenerateProblemNoteSaveSchema() throws NoSuchMethodException {
+        Method method = ProblemNoteMcpTools.class.getDeclaredMethod("save", ProblemNoteSaveToolReq.class);
+        McpSchema.Tool tool = generate(method);
+        Map<String, Object> properties = tool.inputSchema().properties();
+
+        assertTrue(properties.containsKey("idempotencyKey"));
+        assertTrue(properties.containsKey("categoryId"));
+        assertTrue(properties.containsKey("title"));
+        assertTrue(properties.containsKey("problemContent"));
+        assertTrue(properties.containsKey("solutionCode"));
+        assertTrue(properties.containsKey("ideaNote"));
+        assertTrue(properties.containsKey("difficulty"));
+        assertTrue(properties.containsKey("tags"));
+        assertTrue(properties.containsKey("status"));
+        assertFalse(properties.containsKey("id"));
+
+        List<String> required = tool.inputSchema().required();
+        assertTrue(required.contains("title"));
+        assertTrue(required.contains("problemContent"));
+        assertFalse(required.contains("solutionCode"));
     }
 
     private McpSchema.Tool generate(Method method) {

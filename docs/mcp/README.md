@@ -8,6 +8,7 @@
 - `mcp-principles-and-limits.md`：AIO-LIFE MCP 调用原则、运行链路、工具注册、鉴权、限流、幂等、审计和业务限制说明。
 - `food-record-agent-prompt.md`：AIO-LIFE 美食记录 Agent 提示词，可复制到 Trae 智能体配置中使用。
 - `food-record-agent-usage.md`：AIO-LIFE 美食记录 Agent 的 Trae“何时调用”配置和用户使用模板。
+- `problem-note-agent-usage.md`：AIO-LIFE 题目记录 MCP Agent 查询和新增调用说明。
 
 ## Agent 提示词维护规则
 
@@ -30,6 +31,12 @@
 - 升级 `thought_query`，支持按 `thoughtType` 筛选，并返回类型名称和类型化状态文案。
 - 升级 `thought_save` 时间字段，支持主记录 `createTime` / `updateTime` / `recordTime` / `happenedAt` 和事件 `eventTime`。
 - 更新 MCP 调用原则和 Streamable HTTP 示例，明确 Agent 记录情绪/复盘时必须传对应闪念类型。
+
+### 2026-06-23
+
+- 新增 `problem_note_query`，支持外部 AI 查询当前用户题库。
+- 新增 `problem_note_save`，支持外部 AI 新增题目记录并通过 `idempotencyKey` 防重复写入。
+- 新增 `problem-note-agent-usage.md`，明确题目记录 MCP 的读写触发规则。
 
 ### 2026-06-05
 

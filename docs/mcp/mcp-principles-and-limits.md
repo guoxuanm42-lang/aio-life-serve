@@ -133,6 +133,8 @@ method.getParameterCount() == 1
 - 建议使用模块前缀，例如：
 - `food_record_save`
 - `food_record_query`
+- `problem_note_query`
+- `problem_note_save`
 - `thought_query`
 - `thought_save`
 - `time_record_save`
@@ -141,6 +143,12 @@ method.getParameterCount() == 1
 ### 4.5 Schema 生成规则
 
 工具输入 Schema 由方法入参 DTO 自动生成。字段说明优先来自 DTO 字段上的 `@McpField`。
+
+字段必填规则：
+
+- Java primitive 类型字段会自动进入 `required`。
+- DTO 字段可通过 `@McpField(required = true)` 显式进入 `required`。
+- Schema 必填只用于 MCP 参数说明和客户端预校验；服务端业务层仍必须保留关键字段校验。
 
 `@McpOperation` 支持：
 
@@ -157,6 +165,8 @@ method.getParameterCount() == 1
 | --- | --- | --- |
 | `food_record_save` | 写入 | 保存美食记录文字内容，支持创建或更新，创建时支持幂等键，第一版不处理图片 |
 | `food_record_query` | 查询 | 查询当前用户美食记录历史，返回适合 Agent 阅读的文字摘要，不包含图片 |
+| `problem_note_query` | 查询 | 查询当前用户题库，支持关键词、难度、状态、标签、分类和未分类筛选 |
+| `problem_note_save` | 写入 | 新增当前用户题目记录，支持幂等键，不更新已有题目 |
 | `thought_query` | 查询 | 查询当前用户闪念记录，支持关键词、类型、主题、正文、分类、状态、创建日期范围和事件筛选，返回适合 Agent 阅读的摘要列表 |
 | `thought_save` | 写入 | 保存闪念，支持想法行动、情绪心情、复盘沉淀三类记录，可附带结构化详情和多个关联事件 |
 | `time_record_save` | 写入 | 保存时间记录，可附带练习记录 |
@@ -257,6 +267,7 @@ MCP 工具调用存在统一限流：
 当前支持幂等键的工具：
 
 - `food_record_save`
+- `problem_note_save`
 - `thought_save`
 - `time_record_save`
 
@@ -285,6 +296,12 @@ mcp:idemp:<toolName>:<userId>:<idempotencyKey>
 - 创建成功后缓存记录 ID。
 - 重复调用时返回已创建记录详情。
 - 更新已有记录时不走创建幂等逻辑。
+
+`problem_note_save`：
+
+- 创建成功后缓存题目记录 ID。
+- 重复调用时返回已创建题目详情。
+- 第一版只支持新增题目，不支持更新已有题目。
 
 `thought_save`：
 
@@ -368,6 +385,7 @@ Agent 只有在用户明确要求保存、写入、记录时，才调用写入�
 示例：
 
 - 美食记录无法确定菜名时，应先问菜名。
+- 题目记录无法确定题目标题或题目内容时，应先问清楚。
 - 时间记录无法确定日期或时间段时，应先问清楚。
 - 闪念内容为空或无法提炼主题时，不应调用 `thought_save`。
 
@@ -585,6 +603,58 @@ draft, done, to_improve, archived
 
 - 工具保存时忽略传入 `id`，固定按新增处理。
 - `duration` 由业务侧计算或置空，不由 MCP 入参直接决定。
+
+### 12.7 `problem_note_query`
+
+核心字段：
+
+- `page`：当前页码，默认 1。
+- `pageSize`：每页数量，默认 50，最大 200。
+- `keyword`：关键词，模糊匹配题目标题、题目内容和解题思路。
+- `difficulty`：题目难度。
+- `status`：题目状态，支持 `draft` / `solved` / `reviewing` / `archived`。
+- `tags`：标签关键词，模糊匹配标签字符串。
+- `categoryId`：题目分类 ID。
+- `uncategorized`：是否只查询未分类题目；为 `true` 时忽略 `categoryId`。
+
+返回字段：
+
+- `id`
+- `categoryId`
+- `title`
+- `problemContent`
+- `solutionCode`
+- `ideaNote`
+- `difficulty`
+- `tags`
+- `status`
+- `createTime`
+- `updateTime`
+
+### 12.8 `problem_note_save`
+
+核心字段：
+
+- `idempotencyKey`
+- `categoryId`
+- `title`
+- `problemContent`
+- `solutionCode`
+- `ideaNote`
+- `difficulty`
+- `tags`
+- `status`
+
+字段限制：
+
+- `title` 必填。
+- `problemContent` 必填。
+- `solutionCode` 可选，允许先保存题面，后续再补 Java 解法代码。
+- `status` 支持 `draft` / `solved` / `reviewing` / `archived`，为空时默认 `draft`。
+- `categoryId` 为空时保存为未分类题目。
+- `categoryId` 非空时必须属于当前用户，否则业务层会拒绝写入。
+- 第一版不暴露 `id`，不支持通过 MCP 更新已有题目。
+- 创建时建议传 `idempotencyKey`，避免 Agent 重试导致重复新增。
 - 关联练习记录保存时也忽略练习 `id`。
 
 ### 12.6 `time_record_queryByDateRange`

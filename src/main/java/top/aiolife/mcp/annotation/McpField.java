@@ -19,4 +19,6 @@ public @interface McpField {
      * 字段描述
      */
     String description() default "";
+
+    boolean required() default false;
 }

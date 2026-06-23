@@ -110,7 +110,7 @@ public class McpFieldSchemaResolver {
                 fieldSchema.put("description", mcpField.description());
             }
             properties.put(field.getName(), fieldSchema);
-            if (field.getType().isPrimitive()) {
+            if (field.getType().isPrimitive() || (mcpField != null && mcpField.required())) {
                 required.add(field.getName());
             }
         }

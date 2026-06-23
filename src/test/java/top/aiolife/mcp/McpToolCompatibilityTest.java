@@ -8,12 +8,14 @@ import top.aiolife.mcp.registry.McpToolRegistry;
 import top.aiolife.mcp.schema.McpFieldSchemaResolver;
 import top.aiolife.mcp.schema.McpSchemaGenerator;
 import top.aiolife.mcp.tools.FoodRecordMcpTools;
+import top.aiolife.mcp.tools.ProblemNoteMcpTools;
 import top.aiolife.mcp.tools.ThoughtMcpTools;
 import top.aiolife.mcp.tools.TimeRecordMcpTools;
 import top.aiolife.record.mapper.IRelaEventMapper;
 import top.aiolife.record.mapper.IThoughtMapper;
 import top.aiolife.record.service.IThoughtService;
 import top.aiolife.record.service.FoodRecordAiFacade;
+import top.aiolife.record.service.ProblemNoteAiFacade;
 import top.aiolife.record.service.TimeRecordAiFacade;
 
 import java.util.Map;
@@ -48,7 +50,9 @@ class McpToolCompatibilityTest {
                 "time_record_save",
                 "time_record_queryByDateRange",
                 "food_record_save",
-                "food_record_query"
+                "food_record_query",
+                "problem_note_query",
+                "problem_note_save"
         ), toolNames);
     }
 
@@ -115,6 +119,33 @@ class McpToolCompatibilityTest {
         assertTrue(queryProperties.containsKey("toImprove"));
     }
 
+    @Test
+    void shouldExposeProblemNoteInputFields() {
+        McpToolRegistry registry = createRegistry();
+
+        Map<String, Object> queryProperties = registry.getTool("problem_note_query").schema().inputSchema().properties();
+        assertTrue(queryProperties.containsKey("page"));
+        assertTrue(queryProperties.containsKey("pageSize"));
+        assertTrue(queryProperties.containsKey("keyword"));
+        assertTrue(queryProperties.containsKey("difficulty"));
+        assertTrue(queryProperties.containsKey("status"));
+        assertTrue(queryProperties.containsKey("tags"));
+        assertTrue(queryProperties.containsKey("categoryId"));
+        assertTrue(queryProperties.containsKey("uncategorized"));
+
+        Map<String, Object> saveProperties = registry.getTool("problem_note_save").schema().inputSchema().properties();
+        assertTrue(saveProperties.containsKey("idempotencyKey"));
+        assertTrue(saveProperties.containsKey("categoryId"));
+        assertTrue(saveProperties.containsKey("title"));
+        assertTrue(saveProperties.containsKey("problemContent"));
+        assertTrue(saveProperties.containsKey("solutionCode"));
+        assertTrue(saveProperties.containsKey("ideaNote"));
+        assertTrue(saveProperties.containsKey("difficulty"));
+        assertTrue(saveProperties.containsKey("tags"));
+        assertTrue(saveProperties.containsKey("status"));
+        assertFalse(saveProperties.containsKey("id"));
+    }
+
     private McpToolRegistry createRegistry() {
         ThoughtMcpTools thoughtTools = new ThoughtMcpTools(
                 mock(IThoughtService.class),
@@ -122,14 +153,17 @@ class McpToolCompatibilityTest {
                 mock(IRelaEventMapper.class));
         TimeRecordMcpTools timeRecordTools = new TimeRecordMcpTools(mock(TimeRecordAiFacade.class));
         FoodRecordMcpTools foodRecordTools = new FoodRecordMcpTools(mock(FoodRecordAiFacade.class));
+        ProblemNoteMcpTools problemNoteTools = new ProblemNoteMcpTools(mock(ProblemNoteAiFacade.class));
         ApplicationContext applicationContext = mock(ApplicationContext.class);
-        when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"thoughtMcpTools", "timeRecordMcpTools", "foodRecordMcpTools"});
+        when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"thoughtMcpTools", "timeRecordMcpTools", "foodRecordMcpTools", "problemNoteMcpTools"});
         doReturn(ThoughtMcpTools.class).when(applicationContext).getType("thoughtMcpTools");
         doReturn(TimeRecordMcpTools.class).when(applicationContext).getType("timeRecordMcpTools");
         doReturn(FoodRecordMcpTools.class).when(applicationContext).getType("foodRecordMcpTools");
+        doReturn(ProblemNoteMcpTools.class).when(applicationContext).getType("problemNoteMcpTools");
         when(applicationContext.getBean("thoughtMcpTools")).thenReturn(thoughtTools);
         when(applicationContext.getBean("timeRecordMcpTools")).thenReturn(timeRecordTools);
         when(applicationContext.getBean("foodRecordMcpTools")).thenReturn(foodRecordTools);
+        when(applicationContext.getBean("problemNoteMcpTools")).thenReturn(problemNoteTools);
 
         McpFieldSchemaResolver resolver = new McpFieldSchemaResolver();
         McpSchemaGenerator generator = new McpSchemaGenerator(resolver);
