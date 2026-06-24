@@ -132,6 +132,7 @@ class McpSchemaGeneratorTest {
         assertTrue(properties.containsKey("title"));
         assertTrue(properties.containsKey("problemContent"));
         assertTrue(properties.containsKey("solutionCode"));
+        assertTrue(properties.containsKey("pseudoCode"));
         assertTrue(properties.containsKey("ideaNote"));
         assertTrue(properties.containsKey("difficulty"));
         assertTrue(properties.containsKey("tags"));
@@ -141,7 +142,8 @@ class McpSchemaGeneratorTest {
         List<String> required = tool.inputSchema().required();
         assertTrue(required.contains("title"));
         assertTrue(required.contains("problemContent"));
-        assertFalse(required.contains("solutionCode"));
+        assertTrue(required.contains("solutionCode"));
+        assertFalse(required.contains("pseudoCode"));
     }
 
     private McpSchema.Tool generate(Method method) {

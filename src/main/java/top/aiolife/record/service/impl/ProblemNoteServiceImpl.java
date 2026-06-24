@@ -24,7 +24,7 @@ import java.util.Set;
  * 题目记录服务实现，按当前用户隔离题目记录并维护 Java 解法代码和思路备注。
  *
  * @author Ethan
- * @date 2026-06-22
+ * @date 2026-06-24
  */
 @Service
 @RequiredArgsConstructor
@@ -46,7 +46,7 @@ public class ProblemNoteServiceImpl extends ServiceImpl<IProblemNoteMapper, Prob
      * @return 题目记录分页数据
      *
      * @author Ethan
-     * @date 2026-06-22
+     * @date 2026-06-24
      */
     @Override
     public PageResp<ProblemNoteEntity> query(ProblemNoteQueryReq req, Long userId) {
@@ -59,6 +59,8 @@ public class ProblemNoteServiceImpl extends ServiceImpl<IProblemNoteMapper, Prob
                     .like(ProblemNoteEntity::getTitle, keyword)
                     .or()
                     .like(ProblemNoteEntity::getProblemContent, keyword)
+                    .or()
+                    .like(ProblemNoteEntity::getPseudoCode, keyword)
                     .or()
                     .like(ProblemNoteEntity::getIdeaNote, keyword));
         }
@@ -92,7 +94,7 @@ public class ProblemNoteServiceImpl extends ServiceImpl<IProblemNoteMapper, Prob
      * @return 题目记录详情
      *
      * @author Ethan
-     * @date 2026-06-22
+     * @date 2026-06-24
      */
     @Override
     public ProblemNoteEntity detail(Long id, Long userId) {
@@ -107,7 +109,7 @@ public class ProblemNoteServiceImpl extends ServiceImpl<IProblemNoteMapper, Prob
      * @return 新增后的题目记录
      *
      * @author Ethan
-     * @date 2026-06-22
+     * @date 2026-06-24
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -126,7 +128,7 @@ public class ProblemNoteServiceImpl extends ServiceImpl<IProblemNoteMapper, Prob
      * @return 更新后的题目记录
      *
      * @author Ethan
-     * @date 2026-06-22
+     * @date 2026-06-24
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -149,7 +151,7 @@ public class ProblemNoteServiceImpl extends ServiceImpl<IProblemNoteMapper, Prob
      * @param userId 当前用户 ID
      *
      * @author Ethan
-     * @date 2026-06-22
+     * @date 2026-06-24
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -169,7 +171,8 @@ public class ProblemNoteServiceImpl extends ServiceImpl<IProblemNoteMapper, Prob
         entity.setCategoryId(resolveCategoryId(req.getCategoryId(), userId));
         entity.setTitle(normalizeRequired(req.getTitle(), "题目标题不能为空"));
         entity.setProblemContent(normalizeRequired(req.getProblemContent(), "题目内容不能为空"));
-        entity.setSolutionCode(normalizeBlank(req.getSolutionCode()));
+        entity.setSolutionCode(normalizeRequired(req.getSolutionCode(), "Java 解法代码不能为空"));
+        entity.setPseudoCode(normalizeBlank(req.getPseudoCode()));
         entity.setIdeaNote(normalizeBlank(req.getIdeaNote()));
         entity.setDifficulty(normalizeBlank(req.getDifficulty()));
         entity.setTags(normalizeBlank(req.getTags()));

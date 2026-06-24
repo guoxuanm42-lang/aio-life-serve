@@ -649,7 +649,7 @@ draft, done, to_improve, archived
 
 - `title` 必填。
 - `problemContent` 必填。
-- `solutionCode` 可选，允许先保存题面，后续再补 Java 解法代码。
+- `solutionCode` 必填，必须提供 Java 解法代码。
 - `status` 支持 `draft` / `solved` / `reviewing` / `archived`，为空时默认 `draft`。
 - `categoryId` 为空时保存为未分类题目。
 - `categoryId` 非空时必须属于当前用户，否则业务层会拒绝写入。

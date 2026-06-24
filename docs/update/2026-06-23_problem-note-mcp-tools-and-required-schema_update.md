@@ -32,7 +32,7 @@
 - 描述覆盖：
 
 ```text
-新增当前用户题目记录。用于把题目标题、题目内容、Java 解法代码和解题思路保存到题库；title 和 problemContent 必填，solutionCode 可选；支持 idempotencyKey 防止重复写入。
+新增当前用户题目记录。用于把题目标题、题目内容、Java 解法代码和解题思路保存到题库；title、problemContent 和 solutionCode 必填；支持 idempotencyKey 防止重复写入。
 ```
 
 `problem_note_query`
@@ -76,8 +76,9 @@
 
 - `title`
 - `problemContent`
+- `solutionCode`
 
-`solutionCode` 继续保持可选，允许先保存题面，后续再从前端补充 Java 解法代码。
+写入时必须提供 Java 解法代码，避免保存后无法形成完整题目记录。
 
 ### 文档
 
@@ -90,7 +91,7 @@
 - `docs/mcp/problem-note-agent-usage.md`
   - 新增题目记录 Agent 使用说明。
   - 明确查询和写入工具的触发条件。
-  - 明确 `title`、`problemContent` 必填，`solutionCode` 可选。
+  - 明确 `title`、`problemContent`、`solutionCode` 必填。
 
 ## 主要文件
 

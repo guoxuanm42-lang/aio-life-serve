@@ -10,7 +10,7 @@ import lombok.EqualsAndHashCode;
  * 题目记录实体，保存用户手动录入的题目、Java 解法代码和思路备注。
  *
  * @author Ethan
- * @date 2026-06-22
+ * @date 2026-06-24
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -44,8 +44,15 @@ public class ProblemNoteEntity extends BaseEntity {
     private String solutionCode;
 
     /**
+     * 伪代码。
+     */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
+    private String pseudoCode;
+
+    /**
      * 解题思路备注。
      */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String ideaNote;
 
     /**

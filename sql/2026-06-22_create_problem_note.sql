@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `problem_note` (
     `title` VARCHAR(200) NOT NULL COMMENT 'Problem title',
     `problem_content` MEDIUMTEXT NOT NULL COMMENT 'Problem content',
     `solution_code` MEDIUMTEXT DEFAULT NULL COMMENT 'Java solution code',
+    `pseudo_code` MEDIUMTEXT DEFAULT NULL COMMENT 'Pseudocode',
     `idea_note` MEDIUMTEXT DEFAULT NULL COMMENT 'Idea note',
     `difficulty` VARCHAR(30) DEFAULT NULL COMMENT 'Difficulty',
     `tags` VARCHAR(500) DEFAULT NULL COMMENT 'Comma separated tags',

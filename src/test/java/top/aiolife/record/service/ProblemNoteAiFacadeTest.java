@@ -28,7 +28,7 @@ import static org.mockito.Mockito.when;
  * 题目记录 AI 门面测试，验证 MCP 查询映射和新增幂等控制。
  *
  * @author Ethan
- * @date 2026-06-23
+ * @date 2026-06-24
  */
 class ProblemNoteAiFacadeTest {
 
@@ -65,6 +65,7 @@ class ProblemNoteAiFacadeTest {
         assertEquals(1L, result.getTotal());
         assertEquals(100L, result.getItems().getFirst().getId());
         assertEquals("两数之和", result.getItems().getFirst().getTitle());
+        assertEquals("for each num, find target - num", result.getItems().getFirst().getPseudoCode());
     }
 
     @Test
@@ -119,6 +120,7 @@ class ProblemNoteAiFacadeTest {
         entity.setTitle("两数之和");
         entity.setProblemContent("给定数组和目标值，返回两数下标。");
         entity.setSolutionCode("class Solution {}");
+        entity.setPseudoCode("for each num, find target - num");
         entity.setIdeaNote("使用哈希表记录已遍历数字。");
         entity.setDifficulty("easy");
         entity.setTags("数组,哈希表");

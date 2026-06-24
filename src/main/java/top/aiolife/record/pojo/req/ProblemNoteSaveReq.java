@@ -6,7 +6,7 @@ import lombok.Data;
  * 题目记录保存请求，承载题目内容、Java 解法代码和思路备注。
  *
  * @author Ethan
- * @date 2026-06-22
+ * @date 2026-06-24
  */
 @Data
 public class ProblemNoteSaveReq {
@@ -35,6 +35,11 @@ public class ProblemNoteSaveReq {
      * Java 解法代码。
      */
     private String solutionCode;
+
+    /**
+     * 伪代码。
+     */
+    private String pseudoCode;
 
     /**
      * 解题思路备注。

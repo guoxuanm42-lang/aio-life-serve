@@ -1,21 +1,16 @@
 package top.aiolife.record.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import org.junit.jupiter.api.Test;
 import top.aiolife.record.mapper.IProblemCategoryMapper;
 import top.aiolife.record.mapper.IProblemNoteMapper;
-import top.aiolife.record.pojo.entity.ProblemNoteEntity;
 import top.aiolife.record.pojo.req.ProblemNoteSaveReq;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
- * 题目记录服务测试，验证题目写入必填字段和可选代码字段。
+ * 题目记录服务测试，验证题目写入必填字段。
  *
  * @author Ethan
  * @date 2026-06-23
@@ -45,24 +40,14 @@ class ProblemNoteServiceImplTest {
     }
 
     @Test
-    void shouldAllowBlankSolutionCodeWhenCreatingProblemNote() {
-        IProblemNoteMapper problemNoteMapper = mock(IProblemNoteMapper.class);
-        ProblemNoteServiceImpl service = newService(problemNoteMapper);
+    void shouldRejectBlankSolutionCodeWhenCreatingProblemNote() {
+        ProblemNoteServiceImpl service = newService(mock(IProblemNoteMapper.class));
         ProblemNoteSaveReq req = validReq();
         req.setSolutionCode(" ");
-        ProblemNoteEntity saved = new ProblemNoteEntity();
-        saved.setId(100L);
-        saved.setUserId(1L);
-        saved.setTitle(req.getTitle());
-        saved.setProblemContent(req.getProblemContent());
-        when(problemNoteMapper.insert(any(ProblemNoteEntity.class))).thenAnswer(invocation -> {
-            ProblemNoteEntity entity = invocation.getArgument(0);
-            entity.setId(100L);
-            return 1;
-        });
-        when(problemNoteMapper.selectOne(any(Wrapper.class))).thenReturn(saved);
 
-        assertDoesNotThrow(() -> service.create(req, 1L));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> service.create(req, 1L));
+
+        assertEquals("Java 解法代码不能为空", exception.getMessage());
     }
 
     private ProblemNoteServiceImpl newService(IProblemNoteMapper problemNoteMapper) {

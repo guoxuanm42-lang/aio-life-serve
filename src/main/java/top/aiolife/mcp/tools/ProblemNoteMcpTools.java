@@ -17,7 +17,7 @@ import top.aiolife.record.service.ProblemNoteAiFacade;
  * 题目记录 MCP 工具，提供当前用户题库查询和新增题目能力。
  *
  * @author Ethan
- * @date 2026-06-23
+ * @date 2026-06-24
  */
 @Component
 @RequiredArgsConstructor
@@ -32,7 +32,7 @@ public class ProblemNoteMcpTools {
      * @return 统一返回结构，data 为题目记录分页结果
      *
      * @author Ethan
-     * @date 2026-06-23
+     * @date 2026-06-24
      */
     @McpOperation(
             name = "problem_note_query",
@@ -50,7 +50,7 @@ public class ProblemNoteMcpTools {
      * @return 统一返回结构，data 为新增后的题目记录
      *
      * @author Ethan
-     * @date 2026-06-23
+     * @date 2026-06-24
      */
     @McpOperation(
             name = "problem_note_save",
@@ -68,6 +68,7 @@ public class ProblemNoteMcpTools {
         saveReq.setTitle(req.getTitle());
         saveReq.setProblemContent(req.getProblemContent());
         saveReq.setSolutionCode(req.getSolutionCode());
+        saveReq.setPseudoCode(req.getPseudoCode());
         saveReq.setIdeaNote(req.getIdeaNote());
         saveReq.setDifficulty(req.getDifficulty());
         saveReq.setTags(req.getTags());

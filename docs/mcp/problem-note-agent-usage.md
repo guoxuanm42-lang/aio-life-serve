@@ -25,7 +25,7 @@
 
 - `title`：必填，题目标题。
 - `problemContent`：必填，题目内容，可使用 Markdown。
-- `solutionCode`：可选，仅保存 Java 解法代码。
+- `solutionCode`：必填，保存 Java 解法代码。
 - `ideaNote`：可选，保存解题思路、复杂度、易错点或复盘。
 - `difficulty`：可选，例如 `easy` / `medium` / `hard` 或用户自定义难度文本。
 - `tags`：可选，逗号分隔，例如 `数组,哈希表`。

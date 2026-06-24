@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  * 题目记录 MCP/AI 适配门面，负责题库查询、新增题目和幂等控制。
  *
  * @author Ethan
- * @date 2026-06-23
+ * @date 2026-06-24
  */
 @Component
 @RequiredArgsConstructor
@@ -40,7 +40,7 @@ public class ProblemNoteAiFacade {
      * @return 题目记录分页结果
      *
      * @author Ethan
-     * @date 2026-06-23
+     * @date 2026-06-24
      */
     public PageResp<ProblemNoteQueryToolVO> query(ProblemNoteQueryToolReq req, long userId) {
         PageResp<ProblemNoteEntity> page = problemNoteService.query(toQueryReq(req), userId);
@@ -59,7 +59,7 @@ public class ProblemNoteAiFacade {
      * @return 新增后的题目记录
      *
      * @author Ethan
-     * @date 2026-06-23
+     * @date 2026-06-24
      */
     public ProblemNoteEntity create(ProblemNoteSaveReq req, long userId, String idempotencyKey) {
         String idempotencyRedisKey = buildIdempotencyKey(userId, idempotencyKey);
@@ -112,6 +112,7 @@ public class ProblemNoteAiFacade {
         vo.setTitle(entity.getTitle());
         vo.setProblemContent(entity.getProblemContent());
         vo.setSolutionCode(entity.getSolutionCode());
+        vo.setPseudoCode(entity.getPseudoCode());
         vo.setIdeaNote(entity.getIdeaNote());
         vo.setDifficulty(entity.getDifficulty());
         vo.setTags(entity.getTags());

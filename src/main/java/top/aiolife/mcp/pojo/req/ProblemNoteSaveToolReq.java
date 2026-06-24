@@ -7,7 +7,7 @@ import top.aiolife.mcp.annotation.McpField;
  * 题目记录 MCP 新增请求，承载外部 AI 写入题库所需的题目内容和解法信息。
  *
  * @author Ethan
- * @date 2026-06-23
+ * @date 2026-06-24
  */
 @Data
 public class ProblemNoteSaveToolReq {
@@ -24,8 +24,11 @@ public class ProblemNoteSaveToolReq {
     @McpField(description = "题目内容，必填，支持 Markdown 文本", required = true)
     private String problemContent;
 
-    @McpField(description = "Java 解法代码，可选")
+    @McpField(description = "Java 解法代码，必填", required = true)
     private String solutionCode;
+
+    @McpField(description = "伪代码，可选，使用自然语言或类代码步骤描述解题流程")
+    private String pseudoCode;
 
     @McpField(description = "解题思路备注，可选，支持 Markdown 文本")
     private String ideaNote;

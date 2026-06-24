@@ -15,7 +15,7 @@ import static org.mockito.Mockito.mock;
  * 题目记录 MCP 工具测试，验证新增请求到业务保存请求的字段映射。
  *
  * @author Ethan
- * @date 2026-06-23
+ * @date 2026-06-24
  */
 class ProblemNoteMcpToolsTest {
 
@@ -27,6 +27,7 @@ class ProblemNoteMcpToolsTest {
         req.setTitle("两数之和");
         req.setProblemContent("给定数组和目标值，返回两数下标。");
         req.setSolutionCode("class Solution {}");
+        req.setPseudoCode("for each num, find target - num");
         req.setIdeaNote("使用哈希表记录已遍历数字。");
         req.setDifficulty("easy");
         req.setTags("数组,哈希表");
@@ -38,6 +39,7 @@ class ProblemNoteMcpToolsTest {
         assertEquals("两数之和", saveReq.getTitle());
         assertEquals("给定数组和目标值，返回两数下标。", saveReq.getProblemContent());
         assertEquals("class Solution {}", saveReq.getSolutionCode());
+        assertEquals("for each num, find target - num", saveReq.getPseudoCode());
         assertEquals("使用哈希表记录已遍历数字。", saveReq.getIdeaNote());
         assertEquals("easy", saveReq.getDifficulty());
         assertEquals("数组,哈希表", saveReq.getTags());

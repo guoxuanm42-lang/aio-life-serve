@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
  * 题目记录 MCP 查询结果，返回适合外部 AI 阅读的题目核心字段。
  *
  * @author Ethan
- * @date 2026-06-23
+ * @date 2026-06-24
  */
 @Data
 public class ProblemNoteQueryToolVO {
@@ -22,6 +22,8 @@ public class ProblemNoteQueryToolVO {
     private String problemContent;
 
     private String solutionCode;
+
+    private String pseudoCode;
 
     private String ideaNote;
 

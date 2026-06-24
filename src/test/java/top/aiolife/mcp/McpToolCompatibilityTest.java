@@ -139,6 +139,7 @@ class McpToolCompatibilityTest {
         assertTrue(saveProperties.containsKey("title"));
         assertTrue(saveProperties.containsKey("problemContent"));
         assertTrue(saveProperties.containsKey("solutionCode"));
+        assertTrue(saveProperties.containsKey("pseudoCode"));
         assertTrue(saveProperties.containsKey("ideaNote"));
         assertTrue(saveProperties.containsKey("difficulty"));
         assertTrue(saveProperties.containsKey("tags"));
