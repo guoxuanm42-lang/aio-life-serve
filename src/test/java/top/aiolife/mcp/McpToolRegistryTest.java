@@ -8,14 +8,16 @@ import top.aiolife.mcp.definition.McpToolDefinition;
 import top.aiolife.mcp.registry.McpToolRegistry;
 import top.aiolife.mcp.schema.McpFieldSchemaResolver;
 import top.aiolife.mcp.schema.McpSchemaGenerator;
+import top.aiolife.mcp.tools.ArticleMcpTools;
 import top.aiolife.mcp.tools.FoodRecordMcpTools;
 import top.aiolife.mcp.tools.ProblemNoteMcpTools;
 import top.aiolife.mcp.tools.ThoughtMcpTools;
 import top.aiolife.mcp.tools.TimeRecordMcpTools;
 import top.aiolife.record.mapper.IRelaEventMapper;
 import top.aiolife.record.mapper.IThoughtMapper;
-import top.aiolife.record.service.IThoughtService;
+import top.aiolife.record.service.ArticleAiFacade;
 import top.aiolife.record.service.FoodRecordAiFacade;
+import top.aiolife.record.service.IThoughtService;
 import top.aiolife.record.service.ProblemNoteAiFacade;
 import top.aiolife.record.service.TimeRecordAiFacade;
 
@@ -46,8 +48,8 @@ class McpToolRegistryTest {
         Set<String> names = new HashSet<>();
         tools.forEach(tool -> names.add(tool.name()));
 
-        assertEquals(8, tools.size());
-        assertEquals(8, names.size());
+        assertEquals(11, tools.size());
+        assertEquals(11, names.size());
         assertNotNull(registry.getTool("thought_save"));
         assertNotNull(registry.getTool("thought_query"));
         assertTrue(names.contains("time_record_save"));
@@ -56,6 +58,9 @@ class McpToolRegistryTest {
         assertTrue(names.contains("food_record_query"));
         assertTrue(names.contains("problem_note_query"));
         assertTrue(names.contains("problem_note_save"));
+        assertTrue(names.contains("article_query"));
+        assertTrue(names.contains("article_detail"));
+        assertTrue(names.contains("article_save"));
     }
 
     @Test
@@ -76,16 +81,19 @@ class McpToolRegistryTest {
         TimeRecordMcpTools timeRecordTools = new TimeRecordMcpTools(mock(TimeRecordAiFacade.class));
         FoodRecordMcpTools foodRecordTools = new FoodRecordMcpTools(mock(FoodRecordAiFacade.class));
         ProblemNoteMcpTools problemNoteTools = new ProblemNoteMcpTools(mock(ProblemNoteAiFacade.class));
+        ArticleMcpTools articleTools = new ArticleMcpTools(mock(ArticleAiFacade.class));
         ApplicationContext applicationContext = mock(ApplicationContext.class);
-        when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"thoughtMcpTools", "timeRecordMcpTools", "foodRecordMcpTools", "problemNoteMcpTools"});
+        when(applicationContext.getBeanDefinitionNames()).thenReturn(new String[]{"thoughtMcpTools", "timeRecordMcpTools", "foodRecordMcpTools", "problemNoteMcpTools", "articleMcpTools"});
         doReturn(ThoughtMcpTools.class).when(applicationContext).getType("thoughtMcpTools");
         doReturn(TimeRecordMcpTools.class).when(applicationContext).getType("timeRecordMcpTools");
         doReturn(FoodRecordMcpTools.class).when(applicationContext).getType("foodRecordMcpTools");
         doReturn(ProblemNoteMcpTools.class).when(applicationContext).getType("problemNoteMcpTools");
+        doReturn(ArticleMcpTools.class).when(applicationContext).getType("articleMcpTools");
         when(applicationContext.getBean("thoughtMcpTools")).thenReturn(thoughtTools);
         when(applicationContext.getBean("timeRecordMcpTools")).thenReturn(timeRecordTools);
         when(applicationContext.getBean("foodRecordMcpTools")).thenReturn(foodRecordTools);
         when(applicationContext.getBean("problemNoteMcpTools")).thenReturn(problemNoteTools);
+        when(applicationContext.getBean("articleMcpTools")).thenReturn(articleTools);
 
         McpFieldSchemaResolver resolver = new McpFieldSchemaResolver();
         McpSchemaGenerator generator = new McpSchemaGenerator(resolver);

@@ -758,3 +758,60 @@ draft, done, to_improve, archived
 - 查询能力变化，例如新增筛选条件或分页限制。
 - 鉴权、限流、幂等、审计或权限规则变化。
 - 管理接口路径或权限变化。
+
+## 2026-06-25 文章模块 MCP 补充
+
+### 文章工具清单
+
+| 工具名 | 类型 | 说明 |
+| --- | --- | --- |
+| `article_query` | 查询 | 查询当前用户文章列表，只返回摘要和元信息，不返回 Markdown 全文 |
+| `article_detail` | 查询 | 按文章 ID 查询当前用户文章详情，返回 Markdown 原文和纯文本内容 |
+| `article_save` | 写入 | 新增当前用户文章，支持幂等键，不更新已有文章 |
+
+### `article_query`
+
+核心字段：
+
+- `page`：当前页码，默认 1。
+- `pageSize`：每页数量，默认 50，最大 200。
+- `keyword`：关键词，模糊匹配标题、摘要、纯文本正文和标签。
+- `status`：文章状态，支持 `draft` / `published` / `archived`。
+- `tags`：标签关键词，模糊匹配逗号分隔标签。
+- `categoryId`：文章分类 ID。
+- `uncategorized`：是否只查询未分类文章；为 `true` 时忽略 `categoryId`。
+
+返回字段不包含 `markdownContent` 和 `plainTextContent`，如需正文必须调用 `article_detail`。
+
+### `article_detail`
+
+核心字段：
+
+- `id`：文章 ID，必填。
+
+返回 Markdown 原文 `markdownContent`、后端派生纯文本 `plainTextContent`、标题、摘要、标签、分类、状态、字数和时间。
+
+### `article_save`
+
+核心字段：
+
+- `idempotencyKey`：幂等键，推荐传入。
+- `categoryId`：文章分类 ID；为空时保存为未分类。
+- `title`：文章标题，必填。
+- `summary`：文章摘要，可为空；后端不会自动生成摘要。
+- `markdownContent`：Markdown 原文正文，必填。
+- `tags`：逗号分隔标签。
+- `status`：文章状态，支持 `draft` / `published` / `archived`，为空默认 `draft`。
+
+限制：
+
+- 第一版只支持新增文章，不支持通过 MCP 更新已有文章。
+- 不暴露 `id`、`plainTextContent`、`wordCount` 作为写入字段。
+- `plainTextContent` 和 `wordCount` 由后端文章服务根据 `markdownContent` 自动生成。
+- `categoryId` 非空时必须属于当前用户，否则业务层拒绝写入。
+
+幂等行为：
+
+- Redis key：`mcp:idemp:article_save:{userId}:{idempotencyKey}`。
+- 有效期：24 小时。
+- 创建成功后缓存文章 ID；重复调用返回已创建文章详情。

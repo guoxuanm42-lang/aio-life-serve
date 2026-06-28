@@ -44,3 +44,11 @@
 - 新增 `food-record-agent-usage.md`，沉淀 Trae“何时调用”配置、智能体基础信息建议和用户使用模板。
 - 新增本文档，明确 MCP 文档目录用途和 Agent 提示词同步维护规则。
 - 约定后续 MCP 工具变更时同步更新对应 Agent 提示词。
+
+## 2026-06-25 文章模块 MCP 文档补充
+
+- 新增 `article-agent-usage.md`：AIO-LIFE 文章模块 Agent 查询、详情和新增调用说明。
+- 新增 `article_query`：查询当前用户文章列表，只返回摘要和元信息。
+- 新增 `article_detail`：查看文章详情，返回 Markdown 原文和纯文本内容。
+- 新增 `article_save`：新增文章，支持 `idempotencyKey` 防重复写入。
+- 后续文章 MCP 工具字段、名称、枚举或写入规则变化时，需要同步更新本文档、`article-agent-usage.md` 和对应 update 文档。

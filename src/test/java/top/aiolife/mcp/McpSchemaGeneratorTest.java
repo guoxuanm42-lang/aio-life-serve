@@ -4,12 +4,15 @@ import io.modelcontextprotocol.spec.McpSchema;
 import org.junit.jupiter.api.Test;
 import top.aiolife.mcp.annotation.McpField;
 import top.aiolife.mcp.annotation.McpOperation;
+import top.aiolife.mcp.pojo.req.ArticleDetailToolReq;
+import top.aiolife.mcp.pojo.req.ArticleSaveToolReq;
 import top.aiolife.mcp.pojo.req.FoodRecordSaveToolReq;
 import top.aiolife.mcp.pojo.req.ProblemNoteSaveToolReq;
 import top.aiolife.mcp.pojo.req.ThoughtSaveToolReq;
 import top.aiolife.mcp.pojo.req.TimeRecordSaveToolReq;
 import top.aiolife.mcp.schema.McpFieldSchemaResolver;
 import top.aiolife.mcp.schema.McpSchemaGenerator;
+import top.aiolife.mcp.tools.ArticleMcpTools;
 import top.aiolife.mcp.tools.FoodRecordMcpTools;
 import top.aiolife.mcp.tools.ProblemNoteMcpTools;
 import top.aiolife.mcp.tools.ThoughtMcpTools;
@@ -144,6 +147,39 @@ class McpSchemaGeneratorTest {
         assertTrue(required.contains("problemContent"));
         assertTrue(required.contains("solutionCode"));
         assertFalse(required.contains("pseudoCode"));
+    }
+
+    @Test
+    void shouldGenerateArticleSaveSchema() throws NoSuchMethodException {
+        Method method = ArticleMcpTools.class.getDeclaredMethod("save", ArticleSaveToolReq.class);
+        McpSchema.Tool tool = generate(method);
+        Map<String, Object> properties = tool.inputSchema().properties();
+
+        assertTrue(properties.containsKey("idempotencyKey"));
+        assertTrue(properties.containsKey("categoryId"));
+        assertTrue(properties.containsKey("title"));
+        assertTrue(properties.containsKey("summary"));
+        assertTrue(properties.containsKey("markdownContent"));
+        assertTrue(properties.containsKey("tags"));
+        assertTrue(properties.containsKey("status"));
+        assertFalse(properties.containsKey("plainTextContent"));
+        assertFalse(properties.containsKey("wordCount"));
+        assertFalse(properties.containsKey("id"));
+
+        List<String> required = tool.inputSchema().required();
+        assertTrue(required.contains("title"));
+        assertTrue(required.contains("markdownContent"));
+        assertFalse(required.contains("summary"));
+    }
+
+    @Test
+    void shouldGenerateArticleDetailSchema() throws NoSuchMethodException {
+        Method method = ArticleMcpTools.class.getDeclaredMethod("detail", ArticleDetailToolReq.class);
+        McpSchema.Tool tool = generate(method);
+        Map<String, Object> properties = tool.inputSchema().properties();
+
+        assertTrue(properties.containsKey("id"));
+        assertTrue(tool.inputSchema().required().contains("id"));
     }
 
     private McpSchema.Tool generate(Method method) {
