@@ -1,13 +1,14 @@
 package top.aiolife.llm.api;
 
 import cn.dev33.satoken.stp.StpUtil;
-import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import top.aiolife.ai.pojo.req.AiChatReq;
+import top.aiolife.ai.pojo.vo.AiChatResp;
+import top.aiolife.ai.service.AiChatService;
 import top.aiolife.core.constant.ResponseCodeConst;
 import top.aiolife.core.resq.ApiResponse;
 import top.aiolife.llm.pojo.entity.ChatMessageEntity;
@@ -18,7 +19,6 @@ import top.aiolife.llm.service.LLMKeyService;
 import top.aiolife.llm.service.LLMService;
 import top.aiolife.record.service.ITimeRecordService;
 
-import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -34,123 +34,48 @@ public class LLMController {
     private final ITimeRecordService timeRecordService;
     private final ChatMessageService chatMessageService;
     private final ConversationService chatSessionService;
+    private final AiChatService aiChatService;
 
+    /**
+     * 兼容旧路径的非流式 AI 聊天接口。
+     *
+     * <p>用途：保留前端现有 /llm/chat 调用方式，内部统一委托新 AI 编排服务处理 Agent、系统上下文、
+     * 短期聊天记忆和长期记忆，并返回旧接口所需的纯文本回复内容。</p>
+     *
+     * @param request 聊天请求参数，支持 prompt、context、conversationId、agentCode
+     * @return 统一返回结构，data 为助手回复文本
+     *
+     * @author Ethan
+     * @date 2026-06-29
+     */
     @PostMapping("/chat")
     public ApiResponse<String> chat(@RequestBody Map<String, Object> request) {
         try {
             long userId = StpUtil.getLoginIdAsLong();
-            String prompt = (String) request.get("prompt");
-            String context = (String) request.get("context");
-            Long conversationId = request.get("conversationId") != null ? Long.valueOf(request.get("conversationId").toString()) : null;
-
-            var llmKey = llmKeyService.getDefaultLLMKey(userId);
-            if (llmKey == null) {
-                return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, "请先配置大模型 API Key");
-            }
-
-            String fullPrompt = context != null && !context.isEmpty() ? context + "\n" + prompt : prompt;
-            chatMessageService.saveMessage(userId, conversationId, "user", fullPrompt, llmKey.getModelName());
-
-            String response = llmService.generateResponse(
-                    llmKey.getApiKey(),
-                    llmKey.getBaseUrl(),
-                    llmKey.getModelName(),
-                    prompt,
-                    context
-            );
-
-            chatMessageService.saveMessage(userId, conversationId, "assistant", response, llmKey.getModelName());
-
-            return ApiResponse.success(response);
+            AiChatResp resp = aiChatService.chat(userId, toAiChatReq(request));
+            return ApiResponse.success(resp.getContent());
         } catch (Exception e) {
             log.error("Failed to chat with LLM: {}", e.getMessage(), e);
             return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, e.getMessage());
         }
     }
 
+    /**
+     * 兼容旧路径的流式 AI 聊天接口。
+     *
+     * <p>用途：保留前端现有 /llm/chat/stream 调用方式，内部统一委托新 AI 编排服务处理上下文和消息保存，
+     * 并继续输出 token、[DONE]、[ERROR] SSE 数据。</p>
+     *
+     * @param request 聊天请求参数，支持 prompt、context、conversationId、agentCode
+     * @return SSE 发送器，用于流式返回助手回复 token
+     *
+     * @author Ethan
+     * @date 2026-06-29
+     */
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chatStream(@RequestBody Map<String, Object> request) {
         long userId = StpUtil.getLoginIdAsLong();
-        String prompt = (String) request.get("prompt");
-        String context = (String) request.get("context");
-        Long conversationId = request.get("conversationId") != null ? Long.valueOf(request.get("conversationId").toString()) : null;
-
-        SseEmitter emitter = new SseEmitter(300000L);
-        StringBuilder fullResponse = new StringBuilder();
-
-        try {
-            var llmKey = llmKeyService.getDefaultLLMKey(userId);
-            if (llmKey == null) {
-                emitter.send(SseEmitter.event().data("{\"event\":\"error\",\"data\":\"请先配置大模型 API Key\"}"));
-                emitter.complete();
-                return emitter;
-            }
-
-            String fullPrompt = context != null && !context.isEmpty() ? context + "\n" + prompt : prompt;
-            chatMessageService.saveMessage(userId, conversationId, "user", fullPrompt, llmKey.getModelName());
-
-            var streamingModel = llmService.getStreamingChatModel(
-                    llmKey.getApiKey(),
-                    llmKey.getBaseUrl(),
-                    llmKey.getModelName()
-            );
-
-            String modelName = llmKey.getModelName();
-            streamingModel.chat(fullPrompt, new StreamingChatResponseHandler() {
-                @Override
-                public void onPartialResponse(String token) {
-                    try {
-                        fullResponse.append(token);
-                        emitter.send(SseEmitter.event().data(token));
-                    } catch (IOException e) {
-                        log.error("Failed to send token: {}", e.getMessage());
-                        emitter.completeWithError(e);
-                    }
-                }
-
-                @Override
-                public void onCompleteResponse(ChatResponse response) {
-                    try {
-                        chatMessageService.saveMessage(userId, conversationId, "assistant", fullResponse.toString(), modelName);
-                        emitter.send(SseEmitter.event().data("[DONE]"));
-                        emitter.complete();
-                    } catch (IOException e) {
-                        log.error("Failed to send complete event: {}", e.getMessage());
-                        emitter.completeWithError(e);
-                    }
-                }
-
-                @Override
-                public void onError(Throwable error) {
-                    try {
-                        emitter.send(SseEmitter.event().data("[ERROR] " + error.getMessage()));
-                        emitter.complete();
-                    } catch (IOException e) {
-                        log.error("Failed to send error event: {}", e.getMessage());
-                        emitter.completeWithError(e);
-                    }
-                }
-            });
-        } catch (Exception e) {
-            log.error("Failed to start streaming chat: {}", e.getMessage(), e);
-            try {
-                emitter.send(SseEmitter.event().data("[ERROR] " + e.getMessage()));
-            } catch (IOException ioException) {
-                log.error("Failed to send error event: {}", ioException.getMessage());
-            }
-            emitter.complete();
-        }
-
-        emitter.onTimeout(() -> {
-            log.warn("SSE emitter timeout");
-            emitter.complete();
-        });
-
-        emitter.onCompletion(() -> {
-            log.debug("SSE emitter completed");
-        });
-
-        return emitter;
+        return aiChatService.chatStream(userId, toAiChatReq(request));
     }
 
     @PostMapping("/summarize/time-records")
@@ -272,5 +197,19 @@ public class LLMController {
             log.error("Failed to delete chat session: {}", e.getMessage(), e);
             return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, e.getMessage());
         }
+    }
+
+    private AiChatReq toAiChatReq(Map<String, Object> request) {
+        Map<String, Object> safeRequest = request == null ? Map.of() : request;
+        AiChatReq req = new AiChatReq();
+        req.setAgentCode(safeRequest.get("agentCode") == null ? null : safeRequest.get("agentCode").toString());
+        req.setMessage(safeRequest.get("prompt") == null ? null : safeRequest.get("prompt").toString());
+        req.setContext(safeRequest.get("context") == null ? null : safeRequest.get("context").toString());
+        req.setConversationId(parseConversationId(safeRequest.get("conversationId")));
+        return req;
+    }
+
+    private Long parseConversationId(Object conversationId) {
+        return conversationId == null ? null : Long.valueOf(conversationId.toString());
     }
 }

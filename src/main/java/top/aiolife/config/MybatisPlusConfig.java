@@ -8,14 +8,22 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * @author lys
+ * MyBatis Plus 分页与 Mapper 扫描配置。
+ *
+ * @author Ethan
+ * @date 2026-06-29
  */
 @Configuration
-@MapperScan("top.aiolife.*.mapper")
+@MapperScan({"top.aiolife.*.mapper", "top.aiolife.ai.memory.mapper"})
 public class MybatisPlusConfig {
 
   /**
-   * 添加分页插件
+   * 创建 MyBatis Plus 分页拦截器。
+   *
+   * @return MyBatis Plus 拦截器，包含 MySQL 分页插件
+   *
+   * @author Ethan
+   * @date 2026-06-29
    */
   @Bean
   public MybatisPlusInterceptor mybatisPlusInterceptor() {
