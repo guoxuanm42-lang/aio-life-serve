@@ -357,3 +357,120 @@ spring:
 - 支持键盘 `← / → / Esc`
 - 支持图片底部状态栏
 - 支持更接近桌面图片查看器的白底/黑底切换
+
+## 2026-07-10 独立图片查看器合并阶段更新
+
+本次在不修改后端接口的前提下，将原相册弹窗预览升级为独立图片查看器页面，合并完成原计划阶段一和阶段二的核心能力。
+
+### 前端变更
+
+新增独立预览页：
+- `apps/web-antd/src/views/my-hub/photo-album/preview.vue`
+
+新增外部隐藏路由：
+- `apps/web-antd/src/router/routes/external/photo-album-preview.ts`
+- 路径：`/my-hub/photo-album/preview`
+
+调整路由加载：
+- `apps/web-antd/src/router/routes/index.ts`
+- 启用 `routes/external/**/*.ts` 路由加载。
+- 原因：当前项目使用后端菜单路由模式，`routes/modules/**/*.ts` 中新增的本地路由不会在后端模式下自动进入实际运行时路由表。预览页如果放在 `modules/my-hub.ts`，点击后会落入 404。
+- 修复后：预览页作为 external 隐藏路由在 404 兜底路由之前注册，不依赖后端菜单，不显示在左侧菜单。
+
+调整相册列表页：
+- `apps/web-antd/src/views/my-hub/photo-album/index.vue`
+- 图片卡片点击不再打开弹窗预览，改为跳转独立预览页。
+- 跳转参数：
+
+```text
+/my-hub/photo-album/preview?id=xxx&folderId=yyy&from=/my-hub/photo-album
+```
+
+移除旧弹窗预览相关状态、模板和样式，避免同一功能同时存在弹窗预览和独立页预览两套体验。
+
+### 独立预览页能力
+
+支持：
+- 从 URL 读取 `id`
+- 从 URL 读取可选 `folderId`
+- 有 `folderId` 时复用 `queryPhotoImages({ folderId, pageSize: 120 })` 恢复当前文件夹图片上下文
+- 根据 `id` 定位当前图片
+- 无 `folderId` 时只加载当前图片 blob，并提示无法恢复上下文
+- 复用 `getPhotoImageBlob(id)` 加载图片
+- 返回相册
+- 下载当前图片
+- 查看图片信息
+- 显示当前位置，例如 `1 / 20`
+- 缩放比例显示，例如 `100%`
+- 放大、缩小、重置
+- 缩放范围限制：`25% ~ 500%`
+- 鼠标滚轮缩放
+- 鼠标拖拽平移
+- 双击在放大和重置之间切换
+- 浏览器原生全屏 `requestFullscreen()`
+- 监听 `fullscreenchange` 同步真实全屏状态
+- 退出全屏
+- 键盘快捷键：
+  - `Esc`：全屏中退出全屏，非全屏返回相册
+  - `+ / =`：放大
+  - `-`：缩小
+  - `0`：重置
+  - `← / →`：上一张 / 下一张
+
+切换图片时：
+- 重置缩放和平移
+- 同步 URL 中的 `id`
+- 预加载上一张和下一张
+- 释放不再需要的 `object URL`
+- 防止图片 blob 异步返回后组件已卸载导致资源泄漏
+
+### 404 问题修复记录
+
+问题现象：
+- 在相册列表点击图片后，浏览器跳转到：
+
+```text
+/my-hub/photo-album/preview?folderId=xxx&from=/my-hub/photo-album&id=xxx
+```
+
+- 页面显示 404。
+
+原因：
+- 项目当前运行在后端菜单路由模式。
+- `generateAccessible('backend')` 会优先使用后端返回的菜单路由。
+- 本地 `routes/modules/my-hub.ts` 中新增的 `photoAlbumPreview` 不会自动作为后端菜单路由注册。
+- 因此前端路由表中没有 `/my-hub/photo-album/preview`，最终命中 404 兜底页。
+
+修复：
+- 从 `routes/modules/my-hub.ts` 移除预览页路由。
+- 新增 external route 文件注册隐藏路由。
+- 在 `routes/index.ts` 中启用 external route glob。
+- external route 会跟随基础路由一起注册，且位于 404 兜底路由之前。
+
+### 验证记录
+
+已执行：
+
+```bash
+pnpm --filter @vben/web-antd typecheck
+```
+
+结果：
+- 全量 typecheck 仍被仓库既有无关类型错误阻断。
+- 过滤 `photo-album`、`photo-album-preview`、`routes/index` 后，没有本次相册预览改动相关类型错误。
+
+已尝试：
+
+```bash
+pnpm --filter @vben/web-antd build
+```
+
+结果：
+- 构建在 3 分钟后超时，未返回明确编译错误。
+
+### 当前限制
+
+- 本阶段不新增后端单图详情接口。
+- 当前上下文恢复最多使用当前文件夹前 `120` 张图片。
+- 超过 `120` 张后的精确定位、跨页上一张/下一张留到后续阶段处理。
+- 移动端双指缩放暂未实现。
