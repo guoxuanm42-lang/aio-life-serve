@@ -62,6 +62,9 @@ API Key 认证规则：
 
 - 只处理 `Authorization` 头中 `Bearer ` 后以 `ak-` 开头的值。
 - API Key 不存在、已删除或已过期时拒绝请求。
+- API Key 仅允许访问精确协议端点 `/api/mcp` 的 `POST`、`GET`、`DELETE` 请求。
+- API Key 访问普通 REST 接口、`/api/mcp/tools/**`、`/api/mcp/` 或其他相似前缀路径时返回 HTTP 403。
+- 普通登录 Token 的现有访问能力不受 API Key 范围限制影响。
 - 校验成功后，通过 `StpUtil.switchTo(apiKeyEntity.getUserId())` 临时切换为 API Key 所属用户。
 - 请求结束后执行 `StpUtil.endSwitch()`，避免污染后续请求上下文。
 - API Key 调用会写入 API Key 调用日志。
@@ -231,11 +234,13 @@ config == null || config.enabled != false
 
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
-| `GET` | `/mcp/tools` | 登录用户 | 查询运行时工具与运营配置合并结果 |
-| `POST` | `/mcp/tools/{name}/call` | 登录用户 | 模拟调用指定 MCP 工具 |
-| `PUT` | `/mcp/tools/{name}/config` | `admin` | 保存展示名、分组、描述覆盖、排序、写操作标识、备注 |
-| `PUT` | `/mcp/tools/{name}/status` | `admin` | 启用或停用工具 |
-| `GET` | `/mcp/tools/{name}/logs` | `admin` | 查询工具最近调用日志 |
+| `GET` | `/mcp/tools` | 浏览器登录 Token | 查询运行时工具与运营配置合并结果 |
+| `POST` | `/mcp/tools/{name}/call` | 浏览器登录 Token | 模拟调用指定 MCP 工具 |
+| `PUT` | `/mcp/tools/{name}/config` | 浏览器登录 Token + `admin` | 保存展示名、分组、描述覆盖、排序、写操作标识、备注 |
+| `PUT` | `/mcp/tools/{name}/status` | 浏览器登录 Token + `admin` | 启用或停用工具 |
+| `GET` | `/mcp/tools/{name}/logs` | 浏览器登录 Token + `admin` | 查询工具最近调用日志 |
+
+API Key 不具备以上管理接口权限。需要管理或模拟调用工具时，必须使用浏览器登录 Token。
 
 ## 8. 限流规则
 

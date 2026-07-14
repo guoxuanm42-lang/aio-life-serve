@@ -4,9 +4,11 @@
 
 - MCP 端点：`/api/mcp`
 - 传输协议：`streamable-http`
-- 认证方式：复用现有接口认证
-  - `Authorization: Bearer <token>`
-  - 或现有 API Key 认证头
+- 认证方式：`Authorization: Bearer <token-or-api-key>`
+- 浏览器登录 Token 保持现有接口访问能力。
+- API Key 仅允许访问 `/api/mcp`，支持 Streamable HTTP 会话使用的 `POST`、`GET`、`DELETE`。
+- `/api/mcp/tools/**` 管理接口和其他普通 REST 接口仅允许浏览器登录 Token；有效 API Key 访问时返回 HTTP 403。
+- 无效、已删除或已过期 API Key 返回 HTTP 401。
 
 ## 当前已接入工具
 

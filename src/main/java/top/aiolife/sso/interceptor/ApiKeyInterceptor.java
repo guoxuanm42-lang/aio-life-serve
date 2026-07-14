@@ -12,6 +12,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import top.aiolife.sso.constant.ApiKeyAuthConstants;
 import top.aiolife.sso.pojo.entity.ApiKeyEntity;
 import top.aiolife.sso.service.IApiKeyLogService;
 import top.aiolife.sso.service.IApiKeyService;
@@ -78,8 +79,9 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
         StpUtil.switchTo(apiKeyEntity.getUserId());
         
         // 6. 将认证信息存入 SaStorage，以便后续 SaInterceptor 跳过校验
-        SaHolder.getStorage().set("API_KEY_ID", apiKeyEntity.getId());
-        SaHolder.getStorage().set("IS_API_KEY_AUTH", true);
+        SaHolder.getStorage().set(ApiKeyAuthConstants.API_KEY_ID_STORAGE_KEY, apiKeyEntity.getId());
+        SaHolder.getStorage().set(ApiKeyAuthConstants.IS_API_KEY_AUTH_STORAGE_KEY, true);
+        SaHolder.getStorage().set(ApiKeyAuthConstants.AUTH_TYPE_STORAGE_KEY, ApiKeyAuthConstants.API_KEY_AUTH_TYPE);
         
         return true;
     }
@@ -98,9 +100,9 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
      */
     @Override
     public void afterCompletion(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler, @Nullable Exception ex) throws Exception {
-        Boolean isApiKeyAuth = (Boolean) SaHolder.getStorage().get("IS_API_KEY_AUTH");
+        Boolean isApiKeyAuth = (Boolean) SaHolder.getStorage().get(ApiKeyAuthConstants.IS_API_KEY_AUTH_STORAGE_KEY);
         if (Boolean.TRUE.equals(isApiKeyAuth)) {
-            Long apiKeyId = (Long) SaHolder.getStorage().get("API_KEY_ID");
+            Long apiKeyId = (Long) SaHolder.getStorage().get(ApiKeyAuthConstants.API_KEY_ID_STORAGE_KEY);
             // 记录调用日志
             apiKeyLogService.log(
                     apiKeyId,

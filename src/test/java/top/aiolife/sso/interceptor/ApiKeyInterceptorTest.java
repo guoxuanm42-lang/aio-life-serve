@@ -21,6 +21,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import top.aiolife.sso.constant.ApiKeyAuthConstants;
 import top.aiolife.sso.pojo.entity.ApiKeyEntity;
 import top.aiolife.sso.service.IApiKeyLogService;
 import top.aiolife.sso.service.IApiKeyService;
@@ -135,8 +136,31 @@ class ApiKeyInterceptorTest {
 
             assertTrue(allowed);
             stpUtil.verify(() -> StpUtil.switchTo(entity.getUserId()));
-            verify(storage).set("API_KEY_ID", entity.getId());
-            verify(storage).set("IS_API_KEY_AUTH", true);
+            verify(storage).set(ApiKeyAuthConstants.API_KEY_ID_STORAGE_KEY, entity.getId());
+            verify(storage).set(ApiKeyAuthConstants.IS_API_KEY_AUTH_STORAGE_KEY, true);
+            verify(storage).set(ApiKeyAuthConstants.AUTH_TYPE_STORAGE_KEY, ApiKeyAuthConstants.API_KEY_AUTH_TYPE);
+        }
+    }
+
+    @Test
+    @Order(5)
+    void shouldRecordForbiddenCallAndEndIdentitySwitch() throws Exception {
+        SaStorage storage = mock(SaStorage.class);
+        when(storage.get(ApiKeyAuthConstants.IS_API_KEY_AUTH_STORAGE_KEY)).thenReturn(true);
+        when(storage.get(ApiKeyAuthConstants.API_KEY_ID_STORAGE_KEY)).thenReturn(101L);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/article/query");
+        request.setRemoteAddr("127.0.0.1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        response.setStatus(403);
+
+        try (MockedStatic<StpUtil> stpUtil = mockStatic(StpUtil.class);
+             MockedStatic<SaHolder> saHolder = mockStatic(SaHolder.class)) {
+            saHolder.when(SaHolder::getStorage).thenReturn(storage);
+
+            interceptor().afterCompletion(request, response, new Object(), null);
+
+            verify(apiKeyLogService).log(101L, "/api/article/query", "POST", 403, "127.0.0.1");
+            stpUtil.verify(StpUtil::endSwitch);
         }
     }
 

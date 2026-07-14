@@ -11,9 +11,13 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import top.aiolife.record.util.RedisUtil;
+import top.aiolife.sso.constant.ApiKeyAuthConstants;
 
 /**
- * 记录用户最后活跃时间（Token 请求）：写 Redis，低频同步到 DB
+ * Token 用户最后活跃时间拦截器，负责写入 Redis 并标记待同步用户。
+ *
+ * @author Ethan
+ * @date 2026-07-14
  */
 @Slf4j
 @Component
@@ -31,6 +35,17 @@ public class UserLastActiveInterceptor implements HandlerInterceptor {
     @Value("${spring.user.last-active.threshold-seconds:60}")
     private long thresholdSeconds;
 
+    /**
+     * 在 Token 请求完成后低频更新用户最后活跃时间，API Key 和 OPTIONS 请求不计入。
+     *
+     * @param request Http 请求对象
+     * @param response Http 响应对象
+     * @param handler 当前请求处理器
+     * @param ex 请求处理期间抛出的异常，无异常时为 null
+     *
+     * @author Ethan
+     * @date 2026-07-14
+     */
     @Override
     public void afterCompletion(
             @NonNull HttpServletRequest request,
@@ -40,7 +55,7 @@ public class UserLastActiveInterceptor implements HandlerInterceptor {
     ) {
         try {
             // API Key 不计入
-            if (Boolean.TRUE.equals(SaHolder.getStorage().get("IS_API_KEY_AUTH"))) {
+            if (Boolean.TRUE.equals(SaHolder.getStorage().get(ApiKeyAuthConstants.IS_API_KEY_AUTH_STORAGE_KEY))) {
                 return;
             }
             if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
