@@ -47,6 +47,7 @@
 
 | 日期 | 模块 | 更新主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-07-14 | auth | API Key 认证日志脱敏 | fix | [2026-07-14_auth-api-key-log-masking_fix.md](./2026-07-14_auth-api-key-log-masking_fix.md) |
 | 2026-06-12 | thought | 闪念多类型、结构化详情与状态流转日志 | update | [2026-06-12_thought-type-detail-status-log_update.md](./2026-06-12_thought-type-detail-status-log_update.md) |
 | 2026-06-10 | thought | 闪念统计洞察与时间趋势 | update | [2026-06-10_thought-statistics-insight_update.md](./2026-06-10_thought-statistics-insight_update.md) |
 | 2026-06-05 | common | 美食记录 Agent MCP 文档 | update | [2026-06-05_common-food-record-agent-mcp-docs_update.md](./2026-06-05_common-food-record-agent-mcp-docs_update.md) |

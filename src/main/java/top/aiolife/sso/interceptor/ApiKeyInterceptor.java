@@ -2,7 +2,6 @@ package top.aiolife.sso.interceptor;
 
 import cn.dev33.satoken.context.SaHolder;
 import cn.dev33.satoken.exception.NotLoginException;
-import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,14 +15,15 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import top.aiolife.sso.pojo.entity.ApiKeyEntity;
 import top.aiolife.sso.service.IApiKeyLogService;
 import top.aiolife.sso.service.IApiKeyService;
+import top.aiolife.sso.util.ApiKeyMaskUtil;
 
 import java.time.LocalDateTime;
 
 /**
- * API Key 认证拦截器
+ * API Key 认证拦截器，负责凭证校验、请求内身份切换与调用日志记录。
  *
- * @author Lys
- * @date 2026/03/09
+ * @author Ethan
+ * @date 2026-07-14
  */
 @Slf4j
 @Component
@@ -33,6 +33,18 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
     private final IApiKeyService apiKeyService;
     private final IApiKeyLogService apiKeyLogService;
 
+    /**
+     * 在请求处理前校验 API Key，并将当前请求临时切换为凭证所属用户。
+     *
+     * @param request Http 请求对象，用于读取 Authorization 请求头
+     * @param response Http 响应对象
+     * @param handler 当前请求处理器
+     * @return true，表示通过校验或当前请求未使用 API Key
+     * @throws Exception API Key 无效或已过期时抛出未登录异常
+     *
+     * @author Ethan
+     * @date 2026-07-14
+     */
     @Override
     public boolean preHandle(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler) throws Exception {
         // 1. 获取 Authorization 头
@@ -50,14 +62,16 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
         // 3. 校验 API Key
         ApiKeyEntity apiKeyEntity = apiKeyService.getByApiKey(apiKeyStr);
         if (apiKeyEntity == null || apiKeyEntity.getIsDeleted() == 1) {
-            log.warn("API Key {} 不存在", apiKeyStr);
-            throw new NotLoginException("API Key 无效", "API_KEY", apiKeyStr);
+            String maskedApiKey = ApiKeyMaskUtil.mask(apiKeyStr);
+            log.warn("API Key {} 不存在", maskedApiKey);
+            throw new NotLoginException("API Key 无效", "API_KEY", maskedApiKey);
         }
 
         // 4. 检查是否过期
         if (apiKeyEntity.getExpiredAt() != null && apiKeyEntity.getExpiredAt().isBefore(LocalDateTime.now())) {
-            log.warn("API Key {} 已过期", apiKeyStr);
-            throw new NotLoginException("API Key 已过期", "API_KEY", apiKeyStr);
+            String maskedApiKey = ApiKeyMaskUtil.mask(apiKeyStr);
+            log.warn("API Key {} 已过期", maskedApiKey);
+            throw new NotLoginException("API Key 已过期", "API_KEY", maskedApiKey);
         }
 
         // 5. 临时身份切换 (仅限本次请求上下文，不产生真实会话)
@@ -70,6 +84,18 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
         return true;
     }
 
+    /**
+     * 在请求完成后记录 API Key 调用日志，并清理临时用户身份。
+     *
+     * @param request Http 请求对象，用于读取路径、方法和客户端 IP
+     * @param response Http 响应对象，用于读取响应状态码
+     * @param handler 当前请求处理器
+     * @param ex 请求处理期间抛出的异常，无异常时为 null
+     * @throws Exception 调用日志记录或身份清理失败时抛出
+     *
+     * @author Ethan
+     * @date 2026-07-14
+     */
     @Override
     public void afterCompletion(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull Object handler, @Nullable Exception ex) throws Exception {
         Boolean isApiKeyAuth = (Boolean) SaHolder.getStorage().get("IS_API_KEY_AUTH");
