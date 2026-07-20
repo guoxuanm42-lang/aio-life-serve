@@ -8,7 +8,7 @@ import top.aiolife.ai.pojo.vo.AiChatResp;
  * AI 聊天编排服务接口。
  *
  * @author Ethan
- * @date 2026-06-28
+ * @date 2026-07-19
  */
 public interface AiChatService {
 
@@ -29,10 +29,22 @@ public interface AiChatService {
      *
      * @param userId 当前登录用户 id
      * @param req AI 聊天请求，包含 Agent 编码、会话 id、用户消息和兼容旧逻辑的上下文
-     * @return SSE 发送器，用于输出模型 token 和完成标记
+     * @return SSE 发送器，使用 token、done 和 error 事件输出结构化 JSON 数据
      *
      * @author Ethan
-     * @date 2026-06-28
+     * @date 2026-07-19
      */
     SseEmitter chatStream(Long userId, AiChatReq req);
+
+    /**
+     * 发送兼容旧客户端协议的流式 AI 聊天请求。
+     *
+     * @param userId 当前登录用户 id
+     * @param req AI 聊天请求，包含 Agent 编码、会话 id、用户消息和兼容旧逻辑的上下文
+     * @return SSE 发送器，使用原始 token、[DONE] 和 [ERROR] 标记输出数据
+     *
+     * @author Ethan
+     * @date 2026-07-19
+     */
+    SseEmitter chatStreamLegacy(Long userId, AiChatReq req);
 }

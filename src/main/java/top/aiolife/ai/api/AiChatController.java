@@ -19,7 +19,7 @@ import top.aiolife.core.resq.ApiResponse;
  * 统一 AI 聊天入口控制器。
  *
  * @author Ethan
- * @date 2026-06-28
+ * @date 2026-07-19
  */
 @Slf4j
 @RestController
@@ -54,13 +54,13 @@ public class AiChatController {
     /**
      * 发送流式 AI 聊天请求。
      *
-     * <p>用途：为前端提供统一 AI 流式聊天入口，并保持现有 token、[DONE]、[ERROR] SSE 协议。</p>
+     * <p>用途：为前端提供统一 AI 流式聊天入口，通过 token、done 和 error 事件输出结构化 JSON。</p>
      *
      * @param req AI 聊天请求体，包含 Agent 编码、会话 id、用户消息和兼容旧逻辑的上下文
-     * @return SSE 发送器，用于输出模型 token 和完成标记
+     * @return SSE 发送器，token 事件 data 包含 content，done 事件包含会话与模型信息，error 事件包含错误码和安全提示
      *
      * @author Ethan
-     * @date 2026-06-28
+     * @date 2026-07-19
      */
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chatStream(@RequestBody AiChatReq req) {

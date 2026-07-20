@@ -29,12 +29,13 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 默认 AI 聊天编排服务实现。
  *
  * @author Ethan
- * @date 2026-06-29
+ * @date 2026-07-19
  */
 @Slf4j
 @Service
@@ -102,15 +103,43 @@ public class AiChatServiceImpl implements AiChatService {
      *
      * @param userId 当前登录用户 id
      * @param req AI 聊天请求，包含 Agent 编码、会话 id、用户消息和兼容旧逻辑的上下文
-     * @return SSE 发送器，用于输出模型 token 和完成标记
+     * @return SSE 发送器，使用 token、done 和 error 事件输出结构化 JSON 数据
      *
      * @author Ethan
-     * @date 2026-06-29
+     * @date 2026-07-19
      */
     @Override
     public SseEmitter chatStream(Long userId, AiChatReq req) {
+        return chatStream(userId, req, false);
+    }
+
+    /**
+     * 发送兼容旧客户端协议的流式 AI 聊天请求。
+     *
+     * @param userId 当前登录用户 id
+     * @param req AI 聊天请求，包含 Agent 编码、会话 id、用户消息和兼容旧逻辑的上下文
+     * @return SSE 发送器，使用原始 token、[DONE] 和 [ERROR] 标记输出数据
+     *
+     * @author Ethan
+     * @date 2026-07-19
+     */
+    @Override
+    public SseEmitter chatStreamLegacy(Long userId, AiChatReq req) {
+        return chatStream(userId, req, true);
+    }
+
+    private SseEmitter chatStream(Long userId, AiChatReq req, boolean legacyProtocol) {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
-        StringBuilder fullResponse = new StringBuilder();
+        StringBuffer fullResponse = new StringBuffer();
+        AtomicBoolean terminated = new AtomicBoolean(false);
+
+        emitter.onTimeout(() -> terminateEmitter(emitter, terminated, "AI streaming response timed out"));
+        emitter.onError(error -> terminateEmitter(emitter, terminated, "AI streaming client disconnected"));
+        emitter.onCompletion(() -> {
+            if (terminated.compareAndSet(false, true)) {
+                log.info("AI streaming client connection completed before model response");
+            }
+        });
 
         try {
             AiChatReq safeReq = normalizeRequest(req);
@@ -130,51 +159,90 @@ public class AiChatServiceImpl implements AiChatService {
             runtime.getStreamingAssistantService()
                     .chat(safeReq.getMessage())
                     .onPartialResponse(token -> {
+                        if (terminated.get()) {
+                            return;
+                        }
                         try {
                             fullResponse.append(token);
-                            emitter.send(SseEmitter.event().data(token));
+                            sendToken(emitter, token, legacyProtocol);
                         } catch (IOException e) {
-                            log.error("Failed to send token: {}", e.getMessage());
-                            emitter.completeWithError(e);
+                            terminateEmitter(emitter, terminated, "AI streaming client disconnected while sending token");
                         }
                     })
                     .onCompleteResponse(response -> {
+                        if (!terminated.compareAndSet(false, true)) {
+                            return;
+                        }
                         try {
                             chatMessageService.saveMessage(userId, conversationId, "assistant", fullResponse.toString(), modelName);
-                            emitter.send(SseEmitter.event().data("[DONE]"));
+                            sendDone(emitter, conversationId, modelName, legacyProtocol);
                             emitter.complete();
-                        } catch (IOException e) {
-                            log.error("Failed to send complete event: {}", e.getMessage());
-                            emitter.completeWithError(e);
+                        } catch (Exception e) {
+                            sendClaimedStreamError(emitter, legacyProtocol, e);
                         }
                     })
-                    .onError(error -> {
-                        try {
-                            emitter.send(SseEmitter.event().data("[ERROR] " + error.getMessage()));
-                            emitter.complete();
-                        } catch (IOException e) {
-                            log.error("Failed to send error event: {}", e.getMessage());
-                            emitter.completeWithError(e);
-                        }
-                    })
+                    .onError(error -> sendStreamError(emitter, terminated, legacyProtocol, error))
                     .start();
         } catch (Exception e) {
-            log.error("Failed to start AI streaming chat: {}", e.getMessage(), e);
-            try {
-                emitter.send(SseEmitter.event().data("[ERROR] " + e.getMessage()));
-            } catch (IOException ioException) {
-                log.error("Failed to send error event: {}", ioException.getMessage());
+            sendStreamError(emitter, terminated, legacyProtocol, e);
+        }
+        return emitter;
+    }
+
+    private void sendToken(SseEmitter emitter, String token, boolean legacyProtocol) throws IOException {
+        if (legacyProtocol) {
+            emitter.send(SseEmitter.event().data(token));
+            return;
+        }
+        emitter.send(SseEmitter.event().name("token").data(Map.of("content", token)));
+    }
+
+    private void sendDone(SseEmitter emitter, Long conversationId, String modelName, boolean legacyProtocol) throws IOException {
+        if (legacyProtocol) {
+            emitter.send(SseEmitter.event().data("[DONE]"));
+            return;
+        }
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("conversationId", conversationId);
+        payload.put("modelName", modelName);
+        emitter.send(SseEmitter.event().name("done").data(payload));
+    }
+
+    private void sendStreamError(
+            SseEmitter emitter,
+            AtomicBoolean terminated,
+            boolean legacyProtocol,
+            Throwable error
+    ) {
+        if (!terminated.compareAndSet(false, true)) {
+            return;
+        }
+        sendClaimedStreamError(emitter, legacyProtocol, error);
+    }
+
+    private void sendClaimedStreamError(SseEmitter emitter, boolean legacyProtocol, Throwable error) {
+        log.error("AI streaming generation failed: {}", error.getMessage(), error);
+        try {
+            if (legacyProtocol) {
+                emitter.send(SseEmitter.event().data("[ERROR] " + error.getMessage()));
+            } else {
+                emitter.send(SseEmitter.event().name("error").data(Map.of(
+                        "code", "AI_STREAM_FAILED",
+                        "message", "AI 生成失败，请稍后重试"
+                )));
             }
             emitter.complete();
+        } catch (IOException sendError) {
+            log.info("AI streaming client disconnected before error event was delivered");
+            emitter.completeWithError(sendError);
         }
+    }
 
-        emitter.onTimeout(() -> {
-            log.warn("SSE emitter timeout");
+    private void terminateEmitter(SseEmitter emitter, AtomicBoolean terminated, String reason) {
+        if (terminated.compareAndSet(false, true)) {
+            log.info(reason);
             emitter.complete();
-        });
-
-        emitter.onCompletion(() -> log.debug("SSE emitter completed"));
-        return emitter;
+        }
     }
 
     private AiChatReq normalizeRequest(AiChatReq req) {

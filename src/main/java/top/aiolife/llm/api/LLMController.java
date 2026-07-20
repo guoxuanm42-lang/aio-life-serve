@@ -23,6 +23,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 大模型兼容接口与聊天会话管理控制器。
+ *
+ * @author Ethan
+ * @date 2026-07-19
+ */
 @Slf4j
 @RestController
 @AllArgsConstructor
@@ -46,7 +52,7 @@ public class LLMController {
      * @return 统一返回结构，data 为助手回复文本
      *
      * @author Ethan
-     * @date 2026-06-29
+     * @date 2026-07-19
      */
     @PostMapping("/chat")
     public ApiResponse<String> chat(@RequestBody Map<String, Object> request) {
@@ -70,12 +76,12 @@ public class LLMController {
      * @return SSE 发送器，用于流式返回助手回复 token
      *
      * @author Ethan
-     * @date 2026-06-29
+     * @date 2026-07-19
      */
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter chatStream(@RequestBody Map<String, Object> request) {
         long userId = StpUtil.getLoginIdAsLong();
-        return aiChatService.chatStream(userId, toAiChatReq(request));
+        return aiChatService.chatStreamLegacy(userId, toAiChatReq(request));
     }
 
     @PostMapping("/summarize/time-records")

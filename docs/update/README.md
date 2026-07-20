@@ -47,6 +47,7 @@
 
 | 日期 | 模块 | 更新主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-07-20 | common | AI 流式通信安全与稳定性 | update | [2026-07-20_common-ai-stream-security-and-stability_update.md](./2026/07/2026-07-20_common-ai-stream-security-and-stability_update.md) |
 | 2026-07-14 | todo | 失败复盘页增加代办删除操作 | update | [2026-07-14_todo-review-delete-action_update.md](./2026-07-14_todo-review-delete-action_update.md) |
 | 2026-07-14 | auth | API Key 收缩为 MCP 协议专用凭证 | update | [2026-07-14_auth-api-key-mcp-only-access_update.md](./2026-07-14_auth-api-key-mcp-only-access_update.md) |
 | 2026-07-14 | auth | API Key 认证日志脱敏 | fix | [2026-07-14_auth-api-key-log-masking_fix.md](./2026-07-14_auth-api-key-log-masking_fix.md) |

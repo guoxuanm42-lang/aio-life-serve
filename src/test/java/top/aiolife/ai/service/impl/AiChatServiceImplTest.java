@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,7 +39,7 @@ import static org.mockito.Mockito.when;
  * AI 聊天编排服务单元测试。
  *
  * @author Ethan
- * @date 2026-06-29
+ * @date 2026-07-19
  */
 class AiChatServiceImplTest {
 
@@ -178,7 +179,7 @@ class AiChatServiceImplTest {
      * 验证流式入口保存用户原始输入并调用流式服务。
      *
      * @author Ethan
-     * @date 2026-06-29
+     * @date 2026-07-19
      */
     @Test
     void shouldStartStreamingChatAndSaveRawUserMessage() {
@@ -210,6 +211,60 @@ class AiChatServiceImplTest {
         verify(context.chatMessageService).saveMessage(USER_ID, 20L, "user", "流式消息", "gpt-4");
         verify(streamingService).chat("流式消息");
         verify(tokenStream).start();
+
+        ArgumentCaptor<Consumer<String>> partialResponseCaptor = ArgumentCaptor.forClass(Consumer.class);
+        ArgumentCaptor<Consumer> completeResponseCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(tokenStream).onPartialResponse(partialResponseCaptor.capture());
+        verify(tokenStream).onCompleteResponse(completeResponseCaptor.capture());
+
+        partialResponseCaptor.getValue().accept("  代码\n");
+        completeResponseCaptor.getValue().accept(null);
+
+        verify(context.chatMessageService).saveMessage(USER_ID, 20L, "assistant", "  代码\n", "gpt-4");
+    }
+
+    /**
+     * 验证流式生成失败时不保存不完整的助手消息。
+     *
+     * @author Ethan
+     * @date 2026-07-19
+     */
+    @Test
+    void shouldNotSavePartialAssistantMessageWhenStreamingFails() {
+        TestContext context = new TestContext();
+        AiChatReq req = new AiChatReq();
+        req.setMessage("流式消息");
+        req.setConversationId(21L);
+        AiAgentConfigVO agent = buildAgent("life_assistant", true, null);
+        LLMKeyEntity llmKey = buildLlmKey("default-key");
+        GenericStreamingAssistantService streamingService = mock(GenericStreamingAssistantService.class);
+        TokenStream tokenStream = mock(TokenStream.class);
+        AiServiceRuntime runtime = buildRuntime("life_assistant", mock(GenericAssistantService.class), streamingService);
+
+        when(context.aiAgentConfigService.getEffectiveConfig(USER_ID, "life_assistant")).thenReturn(agent);
+        when(context.llmKeyService.getDefaultLLMKey(USER_ID)).thenReturn(llmKey);
+        when(context.aiMemoryService.listEffectiveMemories(USER_ID, "life_assistant", 2)).thenReturn(List.of());
+        when(context.aiPromptContextBuilder.buildSystemMessage("系统提示", List.of(), null)).thenReturn("系统上下文");
+        when(context.aiChatMemoryFactory.createMemory(USER_ID, "life_assistant", 21L, 8)).thenReturn(null);
+        when(context.aiToolService.buildTools(USER_ID, agent)).thenReturn(Map.of());
+        when(context.aiServiceFactory.createRuntime(eq(agent), eq(llmKey), eq("系统上下文"), any(), eq(Map.of()), eq(0.7))).thenReturn(runtime);
+        when(streamingService.chat("流式消息")).thenReturn(tokenStream);
+        when(tokenStream.onPartialResponse(any(Consumer.class))).thenReturn(tokenStream);
+        when(tokenStream.onCompleteResponse(any(Consumer.class))).thenReturn(tokenStream);
+        when(tokenStream.onError(any(Consumer.class))).thenReturn(tokenStream);
+
+        context.service.chatStream(USER_ID, req);
+
+        ArgumentCaptor<Consumer<String>> partialResponseCaptor = ArgumentCaptor.forClass(Consumer.class);
+        ArgumentCaptor<Consumer<Throwable>> errorCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(tokenStream).onPartialResponse(partialResponseCaptor.capture());
+        verify(tokenStream).onError(errorCaptor.capture());
+
+        partialResponseCaptor.getValue().accept("未完成");
+        errorCaptor.getValue().accept(new IllegalStateException("供应商错误"));
+
+        verify(context.chatMessageService, never())
+                .saveMessage(USER_ID, 21L, "assistant", "未完成", "gpt-4");
     }
 
     private AiAgentConfigVO buildAgent(String code, Boolean enabled, String modelKeyId) {
