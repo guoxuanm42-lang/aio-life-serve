@@ -11,6 +11,12 @@ import java.time.LocalDateTime;
 
 @Data
 @TableName("conversation")
+/**
+ * AI 对话会话实体，记录会话所属用户、绑定助手与展示信息。
+ *
+ * @author Ethan
+ * @date 2026-07-20
+ */
 public class ConversationEntity {
 
     @TableId(type = IdType.ASSIGN_ID)
@@ -19,6 +25,8 @@ public class ConversationEntity {
     private Long userId;
 
     private String title;
+
+    private String agentCode;
 
     private Long createUser;
 
@@ -33,6 +41,14 @@ public class ConversationEntity {
     @TableLogic
     private Integer isDeleted;
 
+    /**
+     * 填充新会话的通用创建字段。
+     *
+     * @param userId 当前登录用户 id
+     *
+     * @author Ethan
+     * @date 2026-07-20
+     */
     public void fillCreateCommonField(Long userId) {
         this.userId = userId;
         this.createUser = userId;

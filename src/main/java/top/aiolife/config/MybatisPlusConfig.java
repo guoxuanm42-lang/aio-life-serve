@@ -11,10 +11,10 @@ import org.springframework.context.annotation.Configuration;
  * MyBatis Plus 分页与 Mapper 扫描配置。
  *
  * @author Ethan
- * @date 2026-06-29
+ * @date 2026-08-14
  */
 @Configuration
-@MapperScan({"top.aiolife.*.mapper", "top.aiolife.ai.memory.mapper"})
+@MapperScan({"top.aiolife.*.mapper", "top.aiolife.ai.memory.mapper", "top.aiolife.ai.activity.mapper"})
 public class MybatisPlusConfig {
 
   /**

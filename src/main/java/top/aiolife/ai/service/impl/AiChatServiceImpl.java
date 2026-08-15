@@ -21,7 +21,9 @@ import top.aiolife.ai.service.AiAgentConfigService;
 import top.aiolife.ai.service.AiChatService;
 import top.aiolife.ai.tool.AiToolService;
 import top.aiolife.llm.pojo.entity.LLMKeyEntity;
+import top.aiolife.llm.pojo.entity.ConversationEntity;
 import top.aiolife.llm.service.ChatMessageService;
+import top.aiolife.llm.service.ConversationService;
 import top.aiolife.llm.service.LLMKeyService;
 
 import java.io.IOException;
@@ -35,7 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 默认 AI 聊天编排服务实现。
  *
  * @author Ethan
- * @date 2026-07-19
+ * @date 2026-07-20
  */
 @Slf4j
 @Service
@@ -46,9 +48,15 @@ public class AiChatServiceImpl implements AiChatService {
 
     private static final long SSE_TIMEOUT_MILLIS = 300_000L;
 
+    private static final int MAX_MESSAGE_LENGTH = 10_000;
+
+    private static final int MAX_AGENT_CODE_LENGTH = 64;
+
     private final LLMKeyService llmKeyService;
 
     private final ChatMessageService chatMessageService;
+
+    private final ConversationService conversationService;
 
     private final AiAgentConfigService aiAgentConfigService;
 
@@ -70,11 +78,11 @@ public class AiChatServiceImpl implements AiChatService {
      * @return AI 聊天响应，包含 Agent 编码、会话 id、回复内容和模型名称
      *
      * @author Ethan
-     * @date 2026-06-29
+     * @date 2026-07-20
      */
     @Override
     public AiChatResp chat(Long userId, AiChatReq req) {
-        AiChatReq safeReq = normalizeRequest(req);
+        AiChatReq safeReq = normalizeRequest(userId, req);
         AiAgentConfigVO agentConfig = getEnabledAgentConfig(userId, safeReq.getAgentCode());
         LLMKeyEntity llmKey = resolveLlmKey(userId, agentConfig.getModelKeyId());
         List<AiMemoryVO> memories = aiMemoryService.listEffectiveMemories(userId, safeReq.getAgentCode(), agentConfig.getMaxMemoryItems());
@@ -87,6 +95,7 @@ public class AiChatServiceImpl implements AiChatService {
         chatMessageService.saveMessage(userId, safeReq.getConversationId(), "user", safeReq.getMessage(), llmKey.getModelName());
         String response = runtime.getAssistantService().chat(safeReq.getMessage());
         chatMessageService.saveMessage(userId, safeReq.getConversationId(), "assistant", response, llmKey.getModelName());
+        conversationService.touchSession(userId, safeReq.getConversationId());
 
         AiChatResp resp = new AiChatResp();
         resp.setAgentCode(runtime.getAgentCode());
@@ -106,7 +115,7 @@ public class AiChatServiceImpl implements AiChatService {
      * @return SSE 发送器，使用 token、done 和 error 事件输出结构化 JSON 数据
      *
      * @author Ethan
-     * @date 2026-07-19
+     * @date 2026-07-20
      */
     @Override
     public SseEmitter chatStream(Long userId, AiChatReq req) {
@@ -121,7 +130,7 @@ public class AiChatServiceImpl implements AiChatService {
      * @return SSE 发送器，使用原始 token、[DONE] 和 [ERROR] 标记输出数据
      *
      * @author Ethan
-     * @date 2026-07-19
+     * @date 2026-07-20
      */
     @Override
     public SseEmitter chatStreamLegacy(Long userId, AiChatReq req) {
@@ -142,7 +151,7 @@ public class AiChatServiceImpl implements AiChatService {
         });
 
         try {
-            AiChatReq safeReq = normalizeRequest(req);
+            AiChatReq safeReq = normalizeRequest(userId, req);
             AiAgentConfigVO agentConfig = getEnabledAgentConfig(userId, safeReq.getAgentCode());
             LLMKeyEntity llmKey = resolveLlmKey(userId, agentConfig.getModelKeyId());
             List<AiMemoryVO> memories = aiMemoryService.listEffectiveMemories(userId, safeReq.getAgentCode(), agentConfig.getMaxMemoryItems());
@@ -175,6 +184,7 @@ public class AiChatServiceImpl implements AiChatService {
                         }
                         try {
                             chatMessageService.saveMessage(userId, conversationId, "assistant", fullResponse.toString(), modelName);
+                            conversationService.touchSession(userId, conversationId);
                             sendDone(emitter, conversationId, modelName, legacyProtocol);
                             emitter.complete();
                         } catch (Exception e) {
@@ -226,9 +236,10 @@ public class AiChatServiceImpl implements AiChatService {
             if (legacyProtocol) {
                 emitter.send(SseEmitter.event().data("[ERROR] " + error.getMessage()));
             } else {
+                boolean invalidRequest = error instanceof IllegalArgumentException;
                 emitter.send(SseEmitter.event().name("error").data(Map.of(
-                        "code", "AI_STREAM_FAILED",
-                        "message", "AI 生成失败，请稍后重试"
+                        "code", invalidRequest ? "INVALID_REQUEST" : "AI_STREAM_FAILED",
+                        "message", invalidRequest ? error.getMessage() : "AI 生成失败，请稍后重试"
                 )));
             }
             emitter.complete();
@@ -245,14 +256,37 @@ public class AiChatServiceImpl implements AiChatService {
         }
     }
 
-    private AiChatReq normalizeRequest(AiChatReq req) {
-        AiChatReq safeReq = req == null ? new AiChatReq() : req;
-        if (!StringUtils.hasText(safeReq.getAgentCode())) {
-            safeReq.setAgentCode(DEFAULT_AGENT_CODE);
+    private AiChatReq normalizeRequest(Long userId, AiChatReq req) {
+        if (req == null || !StringUtils.hasText(req.getMessage())) {
+            throw new IllegalArgumentException("消息不能为空");
         }
-        if (safeReq.getMessage() == null) {
-            safeReq.setMessage("");
+        String message = req.getMessage().trim();
+        if (message.length() > MAX_MESSAGE_LENGTH) {
+            throw new IllegalArgumentException("消息不能超过 10000 个字符");
         }
+
+        String requestedAgentCode = StringUtils.hasText(req.getAgentCode()) ? req.getAgentCode().trim() : null;
+        if (requestedAgentCode != null && requestedAgentCode.length() > MAX_AGENT_CODE_LENGTH) {
+            throw new IllegalArgumentException("Agent 编码不能超过 64 个字符");
+        }
+
+        String effectiveAgentCode = requestedAgentCode == null ? DEFAULT_AGENT_CODE : requestedAgentCode;
+        if (req.getConversationId() != null) {
+            ConversationEntity session = conversationService.getOwnedSession(userId, req.getConversationId());
+            String sessionAgentCode = StringUtils.hasText(session.getAgentCode())
+                    ? session.getAgentCode().trim()
+                    : DEFAULT_AGENT_CODE;
+            if (requestedAgentCode != null && !Objects.equals(requestedAgentCode, sessionAgentCode)) {
+                throw new IllegalArgumentException("会话助手不匹配，请新建会话");
+            }
+            effectiveAgentCode = sessionAgentCode;
+        }
+
+        AiChatReq safeReq = new AiChatReq();
+        safeReq.setAgentCode(effectiveAgentCode);
+        safeReq.setConversationId(req.getConversationId());
+        safeReq.setMessage(message);
+        safeReq.setContext(req.getContext());
         return safeReq;
     }
 

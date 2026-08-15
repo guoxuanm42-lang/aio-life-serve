@@ -19,6 +19,7 @@
 
 | 日期 | 模块 | 问题主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-08-15 | 02_frontend | AI 活动总结生成失败：HTTP 环境 UUID 与雪花 ID 精度 | problem | [查看文档](02_frontend/2026-08-15_AI活动总结生成失败_HTTP环境UUID与雪花ID精度.md) |
 | 2026-06-10 | 04_tooling | MCP Streamable HTTP 手动调用缺少 session-id | problem | [查看文档](../04_tooling/2026-06-10_mcp-streamable-http手动调用缺少session-id.md) |
 | 2026-06-09 | 01_backend | Spring Boot 后端重启失败：45678 端口被旧进程占用 | problem | [查看文档](../01_backend/2026-06-09_springboot后端重启失败_45678端口占用.md) |
 | 2026-06-02 | 07_deployment | 服务器访问 analytics 进入项目 404：sys_menu 菜单被禁用 | problem | [查看文档](../07_deployment/2026-06-02_服务器访问analytics进入项目404_sys_menu菜单被禁用.md) |

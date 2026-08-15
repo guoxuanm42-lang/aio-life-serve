@@ -38,13 +38,15 @@ public class AiChatController {
      * @return 统一返回结构，data 包含 Agent 编码、会话 id、助手回复内容和模型名称
      *
      * @author Ethan
-     * @date 2026-06-28
+     * @date 2026-07-20
      */
     @PostMapping("/chat")
     public ApiResponse<AiChatResp> chat(@RequestBody AiChatReq req) {
         try {
             long userId = StpUtil.getLoginIdAsLong();
             return ApiResponse.success(aiChatService.chat(userId, req));
+        } catch (IllegalArgumentException e) {
+            return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, e.getMessage());
         } catch (Exception e) {
             log.error("Failed to chat with AI: {}", e.getMessage(), e);
             return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, e.getMessage());

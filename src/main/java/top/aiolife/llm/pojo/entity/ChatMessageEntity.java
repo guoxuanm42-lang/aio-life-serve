@@ -9,6 +9,12 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * AI 对话消息实体，保存消息内容、模型信息及业务来源幂等标识。
+ *
+ * @author Ethan
+ * @date 2026-08-14
+ */
 @Data
 @TableName("chat_message")
 public class ChatMessageEntity {
@@ -26,6 +32,10 @@ public class ChatMessageEntity {
 
     private String modelName;
 
+    private String sourceType;
+
+    private String idempotencyKey;
+
     private Long createUser;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -39,6 +49,14 @@ public class ChatMessageEntity {
     @TableLogic
     private Integer isDeleted;
 
+    /**
+     * 填充消息创建时的通用审计字段。
+     *
+     * @param userId 当前登录用户 ID
+     *
+     * @author Ethan
+     * @date 2026-08-14
+     */
     public void fillCreateCommonField(Long userId) {
         this.createUser = userId;
         this.updateUser = userId;

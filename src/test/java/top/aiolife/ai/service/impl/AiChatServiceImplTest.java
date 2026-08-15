@@ -17,8 +17,10 @@ import top.aiolife.ai.pojo.vo.AiAgentConfigVO;
 import top.aiolife.ai.pojo.vo.AiChatResp;
 import top.aiolife.ai.service.AiAgentConfigService;
 import top.aiolife.ai.tool.AiToolService;
+import top.aiolife.llm.pojo.entity.ConversationEntity;
 import top.aiolife.llm.pojo.entity.LLMKeyEntity;
 import top.aiolife.llm.service.ChatMessageService;
+import top.aiolife.llm.service.ConversationService;
 import top.aiolife.llm.service.LLMKeyService;
 
 import java.math.BigDecimal;
@@ -39,7 +41,7 @@ import static org.mockito.Mockito.when;
  * AI 聊天编排服务单元测试。
  *
  * @author Ethan
- * @date 2026-07-19
+ * @date 2026-07-23
  */
 class AiChatServiceImplTest {
 
@@ -49,7 +51,7 @@ class AiChatServiceImplTest {
      * 验证非流式聊天使用默认 Agent，并只保存用户原始输入。
      *
      * @author Ethan
-     * @date 2026-06-29
+     * @date 2026-07-23
      */
     @Test
     void shouldChatWithDefaultAgentAndSaveRawUserMessage() {
@@ -66,6 +68,8 @@ class AiChatServiceImplTest {
         AiServiceRuntime runtime = buildRuntime("life_assistant", assistantService, mock(GenericStreamingAssistantService.class));
 
         when(context.aiAgentConfigService.getEffectiveConfig(USER_ID, "life_assistant")).thenReturn(agent);
+        when(context.conversationService.getOwnedSession(USER_ID, 10L))
+                .thenReturn(buildConversation("life_assistant"));
         when(context.llmKeyService.getDefaultLLMKey(USER_ID)).thenReturn(llmKey);
         when(context.aiMemoryService.listEffectiveMemories(USER_ID, "life_assistant", 2)).thenReturn(List.of(memory));
         when(context.aiPromptContextBuilder.buildSystemMessage("系统提示", List.of(memory), "旧上下文")).thenReturn("系统上下文");
@@ -179,7 +183,7 @@ class AiChatServiceImplTest {
      * 验证流式入口保存用户原始输入并调用流式服务。
      *
      * @author Ethan
-     * @date 2026-07-19
+     * @date 2026-07-23
      */
     @Test
     void shouldStartStreamingChatAndSaveRawUserMessage() {
@@ -195,6 +199,8 @@ class AiChatServiceImplTest {
         AiServiceRuntime runtime = buildRuntime("life_assistant", mock(GenericAssistantService.class), streamingService);
 
         when(context.aiAgentConfigService.getEffectiveConfig(USER_ID, "life_assistant")).thenReturn(agent);
+        when(context.conversationService.getOwnedSession(USER_ID, 20L))
+                .thenReturn(buildConversation("life_assistant"));
         when(context.llmKeyService.getDefaultLLMKey(USER_ID)).thenReturn(llmKey);
         when(context.aiMemoryService.listEffectiveMemories(USER_ID, "life_assistant", 2)).thenReturn(List.of());
         when(context.aiPromptContextBuilder.buildSystemMessage("系统提示", List.of(), "旧上下文")).thenReturn("系统上下文");
@@ -227,7 +233,7 @@ class AiChatServiceImplTest {
      * 验证流式生成失败时不保存不完整的助手消息。
      *
      * @author Ethan
-     * @date 2026-07-19
+     * @date 2026-07-23
      */
     @Test
     void shouldNotSavePartialAssistantMessageWhenStreamingFails() {
@@ -242,6 +248,8 @@ class AiChatServiceImplTest {
         AiServiceRuntime runtime = buildRuntime("life_assistant", mock(GenericAssistantService.class), streamingService);
 
         when(context.aiAgentConfigService.getEffectiveConfig(USER_ID, "life_assistant")).thenReturn(agent);
+        when(context.conversationService.getOwnedSession(USER_ID, 21L))
+                .thenReturn(buildConversation("life_assistant"));
         when(context.llmKeyService.getDefaultLLMKey(USER_ID)).thenReturn(llmKey);
         when(context.aiMemoryService.listEffectiveMemories(USER_ID, "life_assistant", 2)).thenReturn(List.of());
         when(context.aiPromptContextBuilder.buildSystemMessage("系统提示", List.of(), null)).thenReturn("系统上下文");
@@ -290,6 +298,12 @@ class AiChatServiceImplTest {
         return entity;
     }
 
+    private ConversationEntity buildConversation(String agentCode) {
+        ConversationEntity entity = new ConversationEntity();
+        entity.setAgentCode(agentCode);
+        return entity;
+    }
+
     private AiMemoryVO buildMemory(String key, String value) {
         AiMemoryVO vo = new AiMemoryVO();
         vo.setMemoryKey(key);
@@ -316,6 +330,8 @@ class AiChatServiceImplTest {
 
         private final ChatMessageService chatMessageService = mock(ChatMessageService.class);
 
+        private final ConversationService conversationService = mock(ConversationService.class);
+
         private final AiAgentConfigService aiAgentConfigService = mock(AiAgentConfigService.class);
 
         private final AiServiceFactory aiServiceFactory = mock(AiServiceFactory.class);
@@ -331,6 +347,7 @@ class AiChatServiceImplTest {
         private final AiChatServiceImpl service = new AiChatServiceImpl(
                 llmKeyService,
                 chatMessageService,
+                conversationService,
                 aiAgentConfigService,
                 aiServiceFactory,
                 aiChatMemoryFactory,

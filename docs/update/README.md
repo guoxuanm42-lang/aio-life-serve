@@ -18,6 +18,15 @@
 - 历史文件说明
   - 现有部分历史文件未完全遵循以上命名规范，暂不做迁移与重命名（如需统一，可单独开迁移任务）
 
+## 文档标题规则
+
+- 每篇更新文档必须使用一个一级标题，格式为：`# YYYY-MM-DD 中文更新主题`。
+- 一级标题必须包含完整日期，日期格式固定为 `YYYY-MM-DD`。
+- 一级标题的主题必须使用简洁、明确的中文描述，不使用纯英文标题。
+- 禁止使用 `git commit -m "..."`、文件名或命令作为一级标题。
+- 如需记录 Git 提交信息，应放在“提交建议”等独立二级章节中，并使用代码块展示。
+- 文档日期应与文件名日期保持一致；更新主题应与文件名中的主题语义一致。
+
 ## 内容维护规则
 
 每篇更新文档建议包含以下内容：
@@ -35,6 +44,7 @@
 
 | 模块 | 说明 |
 |---|---|
+| ai | AI 对话、Agent、记忆与活动总结 |
 | thought | 闪念模块 |
 | cbti | CBTI / 人格测试 |
 | auth | 登录、注册、权限 |
@@ -47,6 +57,7 @@
 
 | 日期 | 模块 | 更新主题 | 类型 | 文档 |
 |---|---|---|---|---|
+| 2026-08-15 | ai | AI 活动总结生成、消息持久化与前端交互 | update | [2026-08-15_ai-activity-summary-generation_update.md](./2026/08/2026-08-15_ai-activity-summary-generation_update.md) |
 | 2026-07-20 | common | AI 流式通信安全与稳定性 | update | [2026-07-20_common-ai-stream-security-and-stability_update.md](./2026/07/2026-07-20_common-ai-stream-security-and-stability_update.md) |
 | 2026-07-14 | todo | 失败复盘页增加代办删除操作 | update | [2026-07-14_todo-review-delete-action_update.md](./2026-07-14_todo-review-delete-action_update.md) |
 | 2026-07-14 | auth | API Key 收缩为 MCP 协议专用凭证 | update | [2026-07-14_auth-api-key-mcp-only-access_update.md](./2026-07-14_auth-api-key-mcp-only-access_update.md) |

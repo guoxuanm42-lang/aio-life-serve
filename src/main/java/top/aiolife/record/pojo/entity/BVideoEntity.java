@@ -2,14 +2,16 @@ package top.aiolife.record.pojo.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 类功能描述
  *
- * @author Lys
- * @date 2025/10/06 22:48
+ * @author Ethan
+ * @date 2026-07-23
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("b_video")
 public class BVideoEntity extends BaseEntity{
 
