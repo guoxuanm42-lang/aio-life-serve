@@ -3,16 +3,19 @@ package top.aiolife.ai.activity.api;
 import cn.dev33.satoken.stp.StpUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import top.aiolife.ai.activity.pojo.req.AiActivitySummaryReq;
 import top.aiolife.ai.activity.pojo.req.AiActivitySummaryGenerateReq;
 import top.aiolife.ai.activity.pojo.resp.AiActivitySummaryGenerateResp;
 import top.aiolife.ai.activity.pojo.summary.AiActivitySummaryContext;
 import top.aiolife.ai.activity.service.AiActivitySummaryGenerateService;
 import top.aiolife.ai.activity.service.AiActivitySummaryService;
+import top.aiolife.ai.activity.service.AiActivitySummaryStreamService;
 import top.aiolife.core.constant.ResponseCodeConst;
 import top.aiolife.core.resq.ApiResponse;
 
@@ -20,7 +23,7 @@ import top.aiolife.core.resq.ApiResponse;
  * AI 活动总结控制器，提供结构化统计预览和一次性 AI 总结生成入口。
  *
  * @author Ethan
- * @date 2026-08-14
+ * @date 2026-08-16
  */
 @Slf4j
 @RestController
@@ -33,6 +36,7 @@ public class AiActivitySummaryController {
 
     private final AiActivitySummaryService aiActivitySummaryService;
     private final AiActivitySummaryGenerateService aiActivitySummaryGenerateService;
+    private final AiActivitySummaryStreamService aiActivitySummaryStreamService;
 
     /**
      * 预览当前登录用户的统一活动统计。
@@ -67,7 +71,7 @@ public class AiActivitySummaryController {
      * @return 统一返回结构，data 为消息 ID、原始用户指令、助手总结和实际模型信息
      *
      * @author Ethan
-     * @date 2026-08-14
+     * @date 2026-08-16
      */
     @PostMapping("/generate")
     public ApiResponse<AiActivitySummaryGenerateResp> generate(@RequestBody AiActivitySummaryGenerateReq req) {
@@ -80,5 +84,23 @@ public class AiActivitySummaryController {
             log.error("Failed to generate AI activity summary", exception);
             return ApiResponse.error(ResponseCodeConst.RSCODE_COMMON_FAIL, GENERATE_FAILURE_MESSAGE);
         }
+    }
+
+    /**
+     * 为当前登录用户异步生成活动总结并流式返回真实阶段进度。
+     *
+     * <p>用途：前端提交周期、会话 ID 和 UUID 幂等键，接口依次返回 progress、done 或 error SSE 事件；
+     * 客户端断开不会取消已经开始的后台生成任务。</p>
+     *
+     * @param req 生成请求，包含 period、conversationId 和 UUID 幂等键
+     * @return SSE 发送器；progress 为阶段信息，done 为完整生成响应，error 为结构化错误
+     *
+     * @author Ethan
+     * @date 2026-08-16
+     */
+    @PostMapping(value = "/generate/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter generateStream(@RequestBody AiActivitySummaryGenerateReq req) {
+        long userId = StpUtil.getLoginIdAsLong();
+        return aiActivitySummaryStreamService.generateStream(userId, req);
     }
 }

@@ -16,7 +16,7 @@ import java.util.List;
  * 相册活动统计服务实现，通过相册文件夹数据构建新建数量和名称明细。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
@@ -33,7 +33,7 @@ public class AlbumActivitySummaryServiceImpl implements AlbumActivitySummaryServ
      * @throws IllegalArgumentException 用户或时间范围无效时抛出
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     @Override
     public AlbumSummary summarize(Long userId, AiActivityDateRange range) {
@@ -45,7 +45,8 @@ public class AlbumActivitySummaryServiceImpl implements AlbumActivitySummaryServ
         wrapper.ge(PhotoFolderEntity::getCreateTime, range.getStartTime());
         wrapper.lt(PhotoFolderEntity::getCreateTime, range.getEndTime());
         wrapper.orderByDesc(PhotoFolderEntity::getCreateTime);
-        List<PhotoFolderEntity> records = photoFolderMapper.selectList(wrapper);
+        List<PhotoFolderEntity> records = ActivitySummarySupport.filterValidRecords(
+                "album", photoFolderMapper.selectList(wrapper), PhotoFolderEntity::getName);
 
         AlbumSummary summary = new AlbumSummary();
         summary.setNewFolderCount(records.size());

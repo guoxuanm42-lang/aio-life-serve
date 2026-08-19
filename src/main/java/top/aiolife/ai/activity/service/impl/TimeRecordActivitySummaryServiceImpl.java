@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * 时迹活动统计服务实现，处理业务日期、公共分类覆盖、分类耗时占比和主要活动排序。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
@@ -52,13 +52,14 @@ public class TimeRecordActivitySummaryServiceImpl implements TimeRecordActivityS
      * @throws IllegalArgumentException 用户、时间或业务日期范围无效时抛出
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     @Override
     public TimeRecordSummary summarize(Long userId, AiActivityDateRange range) {
         ActivitySummarySupport.validate(userId, range);
         validateDateRange(range);
-        List<TimeRecordEntity> records = listRecords(userId, range);
+        List<TimeRecordEntity> records = ActivitySummarySupport.filterValidRecords(
+                "timeRecord", listRecords(userId, range), TimeRecordEntity::getTitle);
         Map<Long, String> categoryNames = loadCategoryNames(records, userId);
 
         TimeRecordSummary summary = new TimeRecordSummary();

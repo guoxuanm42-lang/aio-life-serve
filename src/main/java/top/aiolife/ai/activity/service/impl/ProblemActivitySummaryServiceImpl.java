@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * 题目活动统计服务实现，通过题目及其分类数据构建新增、分类和难度统计。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
@@ -42,12 +42,13 @@ public class ProblemActivitySummaryServiceImpl implements ProblemActivitySummary
      * @throws IllegalArgumentException 用户或时间范围无效时抛出
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     @Override
     public ProblemSummary summarize(Long userId, AiActivityDateRange range) {
         ActivitySummarySupport.validate(userId, range);
-        List<ProblemNoteEntity> records = listNewProblems(userId, range);
+        List<ProblemNoteEntity> records = ActivitySummarySupport.filterValidRecords(
+                "problem", listNewProblems(userId, range), ProblemNoteEntity::getTitle);
         Map<Long, String> categoryNames = loadCategoryNames(records, userId);
 
         ProblemSummary summary = new ProblemSummary();

@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
  * 时迹与 MCP 活动统计服务单元测试，验证业务日期、分类覆盖、耗时聚合和工具排行口径。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 class TimeRecordAndMcpActivitySummaryServiceTest {
 
@@ -68,7 +68,7 @@ class TimeRecordAndMcpActivitySummaryServiceTest {
         when(recordMapper.selectList(any())).thenReturn(List.of(
                 timeRecord("开发", "1", END_DATE, 60),
                 timeRecord("生活", "2", END_DATE.minusDays(1), 30),
-                timeRecord(" ", "invalid", END_DATE, 20),
+                timeRecord("?????", "invalid", END_DATE, 20),
                 timeRecord("无效时长", "1", END_DATE, -1),
                 timeRecord("核心开发", "1", END_DATE.minusDays(1), 90)));
         TimeTrackerCategoryEntity publicCategory = category(1L, 0L, null, "工作");
@@ -81,13 +81,13 @@ class TimeRecordAndMcpActivitySummaryServiceTest {
         TimeRecordSummary summary = new TimeRecordActivitySummaryServiceImpl(recordMapper, categoryMapper)
                 .summarize(USER_ID, RANGE);
 
-        assertEquals(5, summary.getRecordCount());
-        assertEquals(200, summary.getTotalMinutes());
-        assertEquals(3, summary.getCategoryDurations().size());
+        assertEquals(4, summary.getRecordCount());
+        assertEquals(180, summary.getTotalMinutes());
+        assertEquals(2, summary.getCategoryDurations().size());
         assertEquals("1", summary.getCategoryDurations().get(0).getCategoryId());
         assertEquals("专注开发", summary.getCategoryDurations().get(0).getCategoryName());
         assertEquals(150, summary.getCategoryDurations().get(0).getDurationMinutes());
-        assertEquals(new BigDecimal("75.00"), summary.getCategoryDurations().get(0).getPercentage());
+        assertEquals(new BigDecimal("83.33"), summary.getCategoryDurations().get(0).getPercentage());
         assertEquals(List.of("核心开发", "开发", "生活"),
                 summary.getMainActivities().stream().map(item -> item.getTitle()).toList());
         assertEquals("专注开发", summary.getMainActivities().get(0).getCategoryName());
@@ -148,7 +148,7 @@ class TimeRecordAndMcpActivitySummaryServiceTest {
                 log("tool_a", true, 100L),
                 log("tool_a", true, 300L),
                 log("tool_b", false, 50L),
-                log(" ", null, -1L),
+                log("?????", null, -1L),
                 log("tool_c", true, null),
                 log("tool_d", true, 0L),
                 log("tool_e", true, 10L),
@@ -164,6 +164,7 @@ class TimeRecordAndMcpActivitySummaryServiceTest {
         assertEquals("tool_a", summary.getToolRanking().get(0).getToolName());
         assertEquals(2, summary.getToolRanking().get(0).getCallCount());
         assertEquals(200, summary.getToolRanking().get(0).getAverageDurationMs());
+        assertTrue(summary.getToolRanking().stream().noneMatch(item -> item.getToolName().contains("?")));
     }
 
     @Test

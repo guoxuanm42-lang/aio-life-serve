@@ -16,7 +16,7 @@ import java.util.List;
  * 笔记活动统计服务实现，仅读取笔记标题并构建新增统计。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
@@ -33,7 +33,7 @@ public class NoteActivitySummaryServiceImpl implements NoteActivitySummaryServic
      * @throws IllegalArgumentException 用户或时间范围无效时抛出
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     @Override
     public NoteSummary summarize(Long userId, AiActivityDateRange range) {
@@ -45,7 +45,8 @@ public class NoteActivitySummaryServiceImpl implements NoteActivitySummaryServic
         wrapper.ge(MemoEntity::getCreateTime, range.getStartTime());
         wrapper.lt(MemoEntity::getCreateTime, range.getEndTime());
         wrapper.orderByDesc(MemoEntity::getCreateTime);
-        List<MemoEntity> records = memoMapper.selectList(wrapper);
+        List<MemoEntity> records = ActivitySummarySupport.filterValidRecords(
+                "note", memoMapper.selectList(wrapper), MemoEntity::getTitle);
 
         NoteSummary summary = new NoteSummary();
         summary.setNewCount(records.size());

@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * AI 活动总结生成任务实体，保存幂等状态、模型结果和最终消息关联。
  *
  * @author Ethan
- * @date 2026-08-14
+ * @date 2026-08-15
  */
 @Data
 @TableName("ai_activity_summary_generation")
@@ -25,6 +25,7 @@ public class AiActivitySummaryGenerationEntity {
     private String period;
     private String status;
     private String userMessage;
+    private String contextJson;
     private String content;
     private String modelName;
     private String agentCode;

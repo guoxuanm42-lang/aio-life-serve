@@ -8,7 +8,7 @@ import top.aiolife.ai.activity.pojo.entity.AiActivitySummaryGenerationEntity;
  * AI 活动总结幂等任务服务，负责任务认领和生成状态持久化。
  *
  * @author Ethan
- * @date 2026-08-14
+ * @date 2026-08-15
  */
 public interface AiActivitySummaryGenerationTaskService {
 
@@ -33,13 +33,14 @@ public interface AiActivitySummaryGenerationTaskService {
      * @param idempotencyKey 幂等键
      * @param period 标准统计周期
      * @param userMessage 固定用户指令
+     * @param contextJson 生成报告使用的结构化统计快照
      * @return 任务及是否需要调用模型的标识
      *
      * @author Ethan
-     * @date 2026-08-14
+     * @date 2026-08-15
      */
     AiActivitySummaryGenerationClaim claim(Long userId, Long conversationId, String idempotencyKey,
-                                           String period, String userMessage);
+                                           String period, String userMessage, String contextJson);
 
     /**
      * 将模型输出保存为可重试落库的 GENERATED 状态。

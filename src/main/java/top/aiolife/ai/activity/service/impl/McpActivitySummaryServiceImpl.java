@@ -3,7 +3,6 @@ package top.aiolife.ai.activity.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import top.aiolife.ai.activity.model.AiActivityDateRange;
 import top.aiolife.ai.activity.pojo.summary.McpSummary;
 import top.aiolife.ai.activity.pojo.summary.ToolRankingItem;
@@ -21,13 +20,11 @@ import java.util.Map;
  * MCP 活动统计服务实现，按用户调用日志汇总结果、有效耗时和工具排行。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
 public class McpActivitySummaryServiceImpl implements McpActivitySummaryService {
-
-    private static final String UNKNOWN_TOOL_NAME = "未知工具";
 
     private final IMcpToolCallLogMapper mcpToolCallLogMapper;
 
@@ -40,7 +37,7 @@ public class McpActivitySummaryServiceImpl implements McpActivitySummaryService 
      * @throws IllegalArgumentException 用户或时间范围无效时抛出
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     @Override
     public McpSummary summarize(Long userId, AiActivityDateRange range) {
@@ -80,7 +77,9 @@ public class McpActivitySummaryServiceImpl implements McpActivitySummaryService 
 
     private List<ToolRankingItem> buildToolRanking(List<McpToolCallLogEntity> logs) {
         Map<String, ToolAccumulator> accumulators = new LinkedHashMap<>();
-        logs.forEach(log -> accumulators.computeIfAbsent(normalizeToolName(log.getToolName()), key -> new ToolAccumulator())
+        List<McpToolCallLogEntity> rankingLogs = ActivitySummarySupport.filterValidRecords(
+                "mcp.toolRanking", logs, McpToolCallLogEntity::getToolName);
+        rankingLogs.forEach(log -> accumulators.computeIfAbsent(log.getToolName().trim(), key -> new ToolAccumulator())
                 .add(log));
         return accumulators.entrySet().stream()
                 .map(entry -> toRankingItem(entry.getKey(), entry.getValue()))
@@ -101,10 +100,6 @@ public class McpActivitySummaryServiceImpl implements McpActivitySummaryService 
         return item;
     }
 
-    private String normalizeToolName(String toolName) {
-        return StringUtils.hasText(toolName) ? toolName.trim() : UNKNOWN_TOOL_NAME;
-    }
-
     private boolean isValidDuration(Long durationMs) {
         return durationMs != null && durationMs >= 0;
     }
@@ -113,7 +108,7 @@ public class McpActivitySummaryServiceImpl implements McpActivitySummaryService 
      * 单个 MCP 工具的内部累计状态。
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     private static final class ToolAccumulator {
 

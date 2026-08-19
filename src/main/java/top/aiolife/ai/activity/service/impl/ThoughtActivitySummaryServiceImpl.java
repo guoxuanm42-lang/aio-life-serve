@@ -20,7 +20,7 @@ import java.util.Map;
  * 闪念活动统计服务实现，通过闪念数据构建新增、类型、主题和标题统计。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
@@ -40,7 +40,7 @@ public class ThoughtActivitySummaryServiceImpl implements ThoughtActivitySummary
      * @throws IllegalArgumentException 用户或时间范围无效时抛出
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     @Override
     public ThoughtSummary summarize(Long userId, AiActivityDateRange range) {
@@ -53,7 +53,8 @@ public class ThoughtActivitySummaryServiceImpl implements ThoughtActivitySummary
         wrapper.ge(ThoughtEntity::getCreateTime, range.getStartTime());
         wrapper.lt(ThoughtEntity::getCreateTime, range.getEndTime());
         wrapper.orderByDesc(ThoughtEntity::getCreateTime);
-        List<ThoughtEntity> records = thoughtMapper.selectList(wrapper);
+        List<ThoughtEntity> records = ActivitySummarySupport.filterValidRecords(
+                "thought", thoughtMapper.selectList(wrapper), ThoughtEntity::getSubject);
 
         ThoughtSummary summary = new ThoughtSummary();
         summary.setNewCount(records.size());

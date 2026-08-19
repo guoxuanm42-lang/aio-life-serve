@@ -16,7 +16,7 @@ import java.util.List;
  * 美食活动统计服务实现，通过美食记录构建新增数量和菜名明细。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
@@ -33,7 +33,7 @@ public class FoodActivitySummaryServiceImpl implements FoodActivitySummaryServic
      * @throws IllegalArgumentException 用户或时间范围无效时抛出
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     @Override
     public FoodSummary summarize(Long userId, AiActivityDateRange range) {
@@ -45,7 +45,8 @@ public class FoodActivitySummaryServiceImpl implements FoodActivitySummaryServic
         wrapper.ge(FoodRecordEntity::getCreateTime, range.getStartTime());
         wrapper.lt(FoodRecordEntity::getCreateTime, range.getEndTime());
         wrapper.orderByDesc(FoodRecordEntity::getCreateTime);
-        List<FoodRecordEntity> records = foodRecordMapper.selectList(wrapper);
+        List<FoodRecordEntity> records = ActivitySummarySupport.filterValidRecords(
+                "food", foodRecordMapper.selectList(wrapper), FoodRecordEntity::getDishName);
 
         FoodSummary summary = new FoodSummary();
         summary.setNewCount(records.size());

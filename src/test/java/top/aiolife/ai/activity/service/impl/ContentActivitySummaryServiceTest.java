@@ -50,7 +50,7 @@ import static org.mockito.Mockito.when;
  * 基础内容活动统计服务单元测试，验证各模块聚合口径、明细限制和用户时间查询条件。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 class ContentActivitySummaryServiceTest {
 
@@ -75,20 +75,20 @@ class ContentActivitySummaryServiceTest {
     }
 
     @Test
-    void shouldSummarizeThoughtDistributionsAndSkipBlankTitles() {
+    void shouldSummarizeThoughtDistributionsAndExcludeInvalidTitles() {
         IThoughtMapper mapper = mock(IThoughtMapper.class);
         List<ThoughtEntity> records = List.of(
                 thought(" 新增想法 ", "action", "indigo"),
-                thought("", "emotion", "blue"),
+                thought("?????", "emotion", "blue"),
                 thought("复盘", "unknown", null));
         when(mapper.selectList(any())).thenReturn(records);
 
         ThoughtSummary summary = new ThoughtActivitySummaryServiceImpl(mapper).summarize(USER_ID, RANGE);
 
-        assertEquals(3, summary.getNewCount());
+        assertEquals(2, summary.getNewCount());
         assertEquals(List.of("新增想法", "复盘"), summary.getTitles());
-        assertEquals(Map.of("action", 1L, "emotion", 1L, "uncategorized", 1L), counts(summary.getTypeDistribution()));
-        assertEquals(Map.of("indigo", 1L, "blue", 1L, "uncategorized", 1L), counts(summary.getThemeDistribution()));
+        assertEquals(Map.of("action", 1L, "uncategorized", 1L), counts(summary.getTypeDistribution()));
+        assertEquals(Map.of("indigo", 1L, "uncategorized", 1L), counts(summary.getThemeDistribution()));
     }
 
     @Test
@@ -100,6 +100,9 @@ class ContentActivitySummaryServiceTest {
             item.setDishName("菜品" + index);
             records.add(item);
         }
+        FoodRecordEntity invalidItem = new FoodRecordEntity();
+        invalidItem.setDishName("***");
+        records.add(invalidItem);
         when(mapper.selectList(any())).thenReturn(records);
 
         var summary = new FoodActivitySummaryServiceImpl(mapper).summarize(USER_ID, RANGE);
@@ -142,6 +145,7 @@ class ContentActivitySummaryServiceTest {
         IProblemCategoryMapper categoryMapper = mock(IProblemCategoryMapper.class);
         when(noteMapper.selectList(any())).thenReturn(List.of(
                 problem("两数之和", 11L, "medium"),
+                problem("***", 11L, "easy"),
                 problem("二叉树", 99L, null),
                 problem("动态规划", null, "hard")));
         ProblemCategoryEntity category = new ProblemCategoryEntity();
@@ -167,7 +171,9 @@ class ContentActivitySummaryServiceTest {
         IArticleCategoryMapper categoryMapper = mock(IArticleCategoryMapper.class);
         ArticleEntity created = article("新增文章", 21L);
         ArticleEntity updated = article("更新文章", 21L);
-        when(articleMapper.selectList(any())).thenReturn(List.of(created), List.of(updated));
+        when(articleMapper.selectList(any())).thenReturn(
+                List.of(created, article("？？？", 21L)),
+                List.of(updated, article("___", 21L)));
         ArticleCategoryEntity category = new ArticleCategoryEntity();
         category.setId(21L);
         category.setName("研发");
@@ -195,13 +201,25 @@ class ContentActivitySummaryServiceTest {
         memo.setTitle(" 统计笔记 ");
         PhotoFolderEntity folder = new PhotoFolderEntity();
         folder.setName(" 开发截图 ");
-        when(taskMapper.selectList(any())).thenReturn(List.of(task));
-        when(memoMapper.selectList(any())).thenReturn(List.of(memo));
-        when(folderMapper.selectList(any())).thenReturn(List.of(folder));
+        TaskEntity invalidTask = new TaskEntity();
+        invalidTask.setContent("---");
+        MemoEntity invalidMemo = new MemoEntity();
+        invalidMemo.setTitle("损坏�笔记");
+        PhotoFolderEntity invalidFolder = new PhotoFolderEntity();
+        invalidFolder.setName("\u200B\uFEFF");
+        when(taskMapper.selectList(any())).thenReturn(List.of(task, invalidTask));
+        when(memoMapper.selectList(any())).thenReturn(List.of(memo, invalidMemo));
+        when(folderMapper.selectList(any())).thenReturn(List.of(folder, invalidFolder));
 
-        assertEquals(List.of("完成统计"), new TodoActivitySummaryServiceImpl(taskMapper).summarize(USER_ID, RANGE).getContents());
-        assertEquals(List.of("统计笔记"), new NoteActivitySummaryServiceImpl(memoMapper).summarize(USER_ID, RANGE).getTitles());
-        assertEquals(List.of("开发截图"), new AlbumActivitySummaryServiceImpl(folderMapper).summarize(USER_ID, RANGE).getFolderNames());
+        var todo = new TodoActivitySummaryServiceImpl(taskMapper).summarize(USER_ID, RANGE);
+        var note = new NoteActivitySummaryServiceImpl(memoMapper).summarize(USER_ID, RANGE);
+        var album = new AlbumActivitySummaryServiceImpl(folderMapper).summarize(USER_ID, RANGE);
+        assertEquals(1, todo.getNewCount());
+        assertEquals(List.of("完成统计"), todo.getContents());
+        assertEquals(1, note.getNewCount());
+        assertEquals(List.of("统计笔记"), note.getTitles());
+        assertEquals(1, album.getNewFolderCount());
+        assertEquals(List.of("开发截图"), album.getFolderNames());
     }
 
     @Test

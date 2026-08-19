@@ -7,6 +7,7 @@ import top.aiolife.ai.activity.pojo.req.AiActivitySummaryReq;
 import top.aiolife.ai.activity.pojo.summary.AiActivitySummaryContext;
 import top.aiolife.ai.activity.service.AiActivitySummaryService;
 import top.aiolife.ai.activity.service.AiActivitySummaryGenerateService;
+import top.aiolife.ai.activity.service.AiActivitySummaryStreamService;
 import top.aiolife.core.constant.ResponseCodeConst;
 import top.aiolife.core.resq.ApiResponse;
 
@@ -22,7 +23,7 @@ import static org.mockito.Mockito.when;
  * AI 活动总结预览控制器单元测试，验证登录用户传递和异常响应转换。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 class AiActivitySummaryControllerTest {
 
@@ -32,7 +33,7 @@ class AiActivitySummaryControllerTest {
     void shouldPreviewSummaryForCurrentLoginUser() {
         AiActivitySummaryService service = mock(AiActivitySummaryService.class);
         AiActivitySummaryController controller = new AiActivitySummaryController(
-                service, mock(AiActivitySummaryGenerateService.class));
+                service, mock(AiActivitySummaryGenerateService.class), mock(AiActivitySummaryStreamService.class));
         AiActivitySummaryReq req = request("week");
         AiActivitySummaryContext context = new AiActivitySummaryContext();
         context.setPeriod("week");
@@ -52,7 +53,7 @@ class AiActivitySummaryControllerTest {
     void shouldReturnParameterErrorForInvalidRequest() {
         AiActivitySummaryService service = mock(AiActivitySummaryService.class);
         AiActivitySummaryController controller = new AiActivitySummaryController(
-                service, mock(AiActivitySummaryGenerateService.class));
+                service, mock(AiActivitySummaryGenerateService.class), mock(AiActivitySummaryStreamService.class));
         AiActivitySummaryReq req = request("today");
         when(service.summarize(USER_ID, req)).thenThrow(new IllegalArgumentException("非法周期"));
 
@@ -70,7 +71,7 @@ class AiActivitySummaryControllerTest {
     void shouldReturnGenericMessageForInternalFailure() {
         AiActivitySummaryService service = mock(AiActivitySummaryService.class);
         AiActivitySummaryController controller = new AiActivitySummaryController(
-                service, mock(AiActivitySummaryGenerateService.class));
+                service, mock(AiActivitySummaryGenerateService.class), mock(AiActivitySummaryStreamService.class));
         AiActivitySummaryReq req = request("week");
         when(service.summarize(USER_ID, req)).thenThrow(new IllegalStateException("数据库明细"));
 

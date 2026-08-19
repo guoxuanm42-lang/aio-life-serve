@@ -8,6 +8,7 @@ import top.aiolife.ai.activity.model.AiActivitySummaryGenerationStatus;
 import top.aiolife.ai.activity.pojo.entity.AiActivitySummaryGenerationEntity;
 import top.aiolife.ai.activity.pojo.resp.AiActivitySummaryGenerateResp;
 import top.aiolife.ai.activity.service.AiActivitySummaryPersistenceService;
+import top.aiolife.ai.activity.support.AiActivitySummaryContextCodec;
 import top.aiolife.llm.pojo.entity.ChatMessageEntity;
 import top.aiolife.llm.service.ChatMessageService;
 import top.aiolife.llm.service.ConversationService;
@@ -18,7 +19,7 @@ import java.time.LocalDateTime;
  * AI 活动总结消息持久化实现，在单一事务内完成双边消息与任务状态更新。
  *
  * @author Ethan
- * @date 2026-08-14
+ * @date 2026-08-15
  */
 @Service
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class AiActivitySummaryPersistenceServiceImpl implements AiActivitySummar
     private final ChatMessageService chatMessageService;
     private final ConversationService conversationService;
     private final AiActivitySummaryGenerationMapper generationMapper;
+    private final AiActivitySummaryContextCodec contextCodec;
 
     /**
      * 原子保存活动总结用户消息、助手消息并完成幂等任务。
@@ -36,7 +38,7 @@ public class AiActivitySummaryPersistenceServiceImpl implements AiActivitySummar
      * @return 与落库内容一致的响应
      *
      * @author Ethan
-     * @date 2026-08-14
+     * @date 2026-08-15
      */
     @Override
     @Transactional
@@ -67,6 +69,7 @@ public class AiActivitySummaryPersistenceServiceImpl implements AiActivitySummar
                 .period(task.getPeriod())
                 .userMessage(task.getUserMessage())
                 .content(task.getContent())
+                .activitySummary(contextCodec.deserialize(task.getContextJson()))
                 .modelName(task.getModelName())
                 .agentCode(task.getAgentCode())
                 .agentName(task.getAgentName())

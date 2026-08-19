@@ -16,7 +16,7 @@ import java.util.List;
  * 待办活动统计服务实现，通过待办数据构建新增数量和内容明细。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
@@ -33,7 +33,7 @@ public class TodoActivitySummaryServiceImpl implements TodoActivitySummaryServic
      * @throws IllegalArgumentException 用户或时间范围无效时抛出
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     @Override
     public TodoSummary summarize(Long userId, AiActivityDateRange range) {
@@ -45,7 +45,8 @@ public class TodoActivitySummaryServiceImpl implements TodoActivitySummaryServic
         wrapper.ge(TaskEntity::getCreateTime, range.getStartTime());
         wrapper.lt(TaskEntity::getCreateTime, range.getEndTime());
         wrapper.orderByDesc(TaskEntity::getCreateTime);
-        List<TaskEntity> records = taskMapper.selectList(wrapper);
+        List<TaskEntity> records = ActivitySummarySupport.filterValidRecords(
+                "todo", taskMapper.selectList(wrapper), TaskEntity::getContent);
 
         TodoSummary summary = new TodoSummary();
         summary.setNewCount(records.size());

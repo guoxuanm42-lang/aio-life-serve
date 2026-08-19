@@ -20,7 +20,7 @@ import java.util.Objects;
  * AI 活动总结幂等任务服务实现，通过唯一键和条件更新防止重复模型调用。
  *
  * @author Ethan
- * @date 2026-08-14
+ * @date 2026-08-15
  */
 @Service
 @RequiredArgsConstructor
@@ -55,14 +55,15 @@ public class AiActivitySummaryGenerationTaskServiceImpl implements AiActivitySum
      * @param idempotencyKey 幂等键
      * @param period 标准统计周期
      * @param userMessage 固定用户指令
+     * @param contextJson 生成报告使用的结构化统计快照
      * @return 任务认领结果
      *
      * @author Ethan
-     * @date 2026-08-14
+     * @date 2026-08-15
      */
     @Override
     public AiActivitySummaryGenerationClaim claim(Long userId, Long conversationId, String idempotencyKey,
-                                                  String period, String userMessage) {
+                                                  String period, String userMessage, String contextJson) {
         AiActivitySummaryGenerationEntity existing = find(userId, conversationId, idempotencyKey);
         if (existing == null) {
             AiActivitySummaryGenerationEntity created = new AiActivitySummaryGenerationEntity();
@@ -72,6 +73,7 @@ public class AiActivitySummaryGenerationTaskServiceImpl implements AiActivitySum
             created.setPeriod(period);
             created.setStatus(AiActivitySummaryGenerationStatus.PROCESSING.name());
             created.setUserMessage(userMessage);
+            created.setContextJson(contextJson);
             created.setCreateTime(LocalDateTime.now());
             created.setUpdateTime(created.getCreateTime());
             try {
@@ -95,12 +97,17 @@ public class AiActivitySummaryGenerationTaskServiceImpl implements AiActivitySum
                 .eq(AiActivitySummaryGenerationEntity::getStatus, AiActivitySummaryGenerationStatus.FAILED.name())
                 .set(AiActivitySummaryGenerationEntity::getStatus, AiActivitySummaryGenerationStatus.PROCESSING.name())
                 .set(AiActivitySummaryGenerationEntity::getErrorMessage, null)
+                .set(existing.getContextJson() == null,
+                        AiActivitySummaryGenerationEntity::getContextJson, contextJson)
                 .set(AiActivitySummaryGenerationEntity::getUpdateTime, LocalDateTime.now()));
         if (updated != 1) {
             throw new IllegalStateException("活动总结正在生成中，请稍后重试");
         }
         existing.setStatus(AiActivitySummaryGenerationStatus.PROCESSING.name());
         existing.setErrorMessage(null);
+        if (existing.getContextJson() == null) {
+            existing.setContextJson(contextJson);
+        }
         return new AiActivitySummaryGenerationClaim(existing, true);
     }
 

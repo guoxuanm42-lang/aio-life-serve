@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * 文章活动统计服务实现，按互斥口径构建新增文章、更新文章及新增分类统计。
  *
  * @author Ethan
- * @date 2026-08-13
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
@@ -40,13 +40,15 @@ public class ArticleActivitySummaryServiceImpl implements ArticleActivitySummary
      * @throws IllegalArgumentException 用户或时间范围无效时抛出
      *
      * @author Ethan
-     * @date 2026-08-13
+     * @date 2026-08-16
      */
     @Override
     public ArticleSummary summarize(Long userId, AiActivityDateRange range) {
         ActivitySummarySupport.validate(userId, range);
-        List<ArticleEntity> newArticles = listNewArticles(userId, range);
-        List<ArticleEntity> updatedArticles = listUpdatedArticles(userId, range);
+        List<ArticleEntity> newArticles = ActivitySummarySupport.filterValidRecords(
+                "article.new", listNewArticles(userId, range), ArticleEntity::getTitle);
+        List<ArticleEntity> updatedArticles = ActivitySummarySupport.filterValidRecords(
+                "article.updated", listUpdatedArticles(userId, range), ArticleEntity::getTitle);
         Map<Long, String> categoryNames = loadCategoryNames(newArticles, userId);
 
         ArticleSummary summary = new ArticleSummary();

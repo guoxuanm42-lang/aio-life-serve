@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import top.aiolife.ai.activity.service.AiActivitySummaryHistoryService;
 import top.aiolife.ai.pojo.req.AiChatReq;
 import top.aiolife.ai.pojo.vo.AiChatResp;
 import top.aiolife.ai.service.AiChatService;
@@ -17,6 +18,7 @@ import top.aiolife.llm.pojo.req.ConversationCreateReq;
 import top.aiolife.llm.pojo.req.ConversationUpdateReq;
 import top.aiolife.llm.pojo.req.LlmChatReq;
 import top.aiolife.llm.pojo.req.TimeRecordSummaryReq;
+import top.aiolife.llm.pojo.resp.ChatMessageResp;
 import top.aiolife.llm.service.ChatMessageService;
 import top.aiolife.llm.service.ConversationService;
 import top.aiolife.record.service.ITimeRecordService;
@@ -31,7 +33,7 @@ import java.util.List;
  * 大模型兼容接口与聊天会话管理控制器。
  *
  * @author Ethan
- * @date 2026-07-19
+ * @date 2026-08-15
  */
 @Slf4j
 @RestController
@@ -45,6 +47,7 @@ public class LLMController {
     private final ChatMessageService chatMessageService;
     private final ConversationService chatSessionService;
     private final AiChatService aiChatService;
+    private final AiActivitySummaryHistoryService activitySummaryHistoryService;
 
     /**
      * 兼容旧路径的非流式 AI 聊天接口。
@@ -155,7 +158,7 @@ public class LLMController {
      * @date 2026-08-15
      */
     @GetMapping("/chat/history")
-    public ApiResponse<List<ChatMessageEntity>> getChatHistory(@RequestParam(required = false) Long conversationId) {
+    public ApiResponse<List<ChatMessageResp>> getChatHistory(@RequestParam(required = false) Long conversationId) {
         try {
             long userId = StpUtil.getLoginIdAsLong();
             List<ChatMessageEntity> history;
@@ -165,7 +168,7 @@ public class LLMController {
             } else {
                 history = chatMessageService.listByUserId(userId);
             }
-            return ApiResponse.success(history);
+            return ApiResponse.success(activitySummaryHistoryService.assemble(userId, history));
         } catch (IllegalArgumentException e) {
             return ApiResponse.error(ResponseCodeConst.RECODE_PARAM_FAIL, e.getMessage());
         } catch (Exception e) {

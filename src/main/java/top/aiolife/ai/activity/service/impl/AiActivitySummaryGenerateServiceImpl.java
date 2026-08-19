@@ -7,6 +7,7 @@ import top.aiolife.ai.activity.model.AiActivitySummaryGenerationClaim;
 import top.aiolife.ai.activity.model.AiActivitySummaryGenerationStatus;
 import top.aiolife.ai.activity.model.AiActivitySummaryModelResult;
 import top.aiolife.ai.activity.model.AiActivitySummaryPeriod;
+import top.aiolife.ai.activity.model.AiActivitySummaryProgressStage;
 import top.aiolife.ai.activity.pojo.entity.AiActivitySummaryGenerationEntity;
 import top.aiolife.ai.activity.pojo.req.AiActivitySummaryGenerateReq;
 import top.aiolife.ai.activity.pojo.req.AiActivitySummaryReq;
@@ -16,7 +17,9 @@ import top.aiolife.ai.activity.service.AiActivitySummaryGenerateService;
 import top.aiolife.ai.activity.service.AiActivitySummaryGenerationTaskService;
 import top.aiolife.ai.activity.service.AiActivitySummaryModelService;
 import top.aiolife.ai.activity.service.AiActivitySummaryPersistenceService;
+import top.aiolife.ai.activity.service.AiActivitySummaryProgressListener;
 import top.aiolife.ai.activity.service.AiActivitySummaryService;
+import top.aiolife.ai.activity.support.AiActivitySummaryContextCodec;
 import top.aiolife.ai.activity.support.AiActivitySummaryPromptBuilder;
 import top.aiolife.llm.pojo.entity.ConversationEntity;
 import top.aiolife.llm.service.ConversationService;
@@ -27,7 +30,7 @@ import java.util.UUID;
  * AI 活动总结生成服务实现，以幂等状态机串联统计、一次模型调用和原子消息保存。
  *
  * @author Ethan
- * @date 2026-08-14
+ * @date 2026-08-16
  */
 @Service
 @RequiredArgsConstructor
@@ -41,6 +44,7 @@ public class AiActivitySummaryGenerateServiceImpl implements AiActivitySummaryGe
     private final AiActivitySummaryGenerationTaskService taskService;
     private final AiActivitySummaryModelService modelService;
     private final AiActivitySummaryPersistenceService persistenceService;
+    private final AiActivitySummaryContextCodec contextCodec;
 
     /**
      * 生成并保存当前用户指定周期的活动总结。
@@ -50,10 +54,31 @@ public class AiActivitySummaryGenerateServiceImpl implements AiActivitySummaryGe
      * @return 生成内容和落库消息信息；空活动时消息 ID 为空且不调用模型
      *
      * @author Ethan
-     * @date 2026-08-14
+     * @date 2026-08-16
      */
     @Override
     public AiActivitySummaryGenerateResp generate(Long userId, AiActivitySummaryGenerateReq req) {
+        return generate(userId, req, AiActivitySummaryProgressListener.NONE);
+    }
+
+    /**
+     * 生成并保存当前用户指定周期的活动总结，同时通知真实业务阶段。
+     *
+     * @param userId 当前用户 ID
+     * @param req 活动总结生成请求
+     * @param progressListener 生成进度监听器
+     * @return 生成内容和落库消息信息；空活动时消息 ID 为空且不调用模型
+     *
+     * @author Ethan
+     * @date 2026-08-16
+     */
+    @Override
+    public AiActivitySummaryGenerateResp generate(
+            Long userId,
+            AiActivitySummaryGenerateReq req,
+            AiActivitySummaryProgressListener progressListener) {
+        AiActivitySummaryProgressListener listener = progressListener == null
+                ? AiActivitySummaryProgressListener.NONE : progressListener;
         ValidatedRequest validated = validate(userId, req);
         ConversationEntity session = conversationService.getOwnedSession(userId, validated.conversationId());
         AiActivitySummaryGenerationEntity existing = taskService.find(
@@ -61,15 +86,19 @@ public class AiActivitySummaryGenerateServiceImpl implements AiActivitySummaryGe
         if (existing != null) {
             validateExistingPeriod(existing, validated.period());
             if (AiActivitySummaryGenerationStatus.SUCCESS.name().equals(existing.getStatus())) {
+                listener.onProgress(AiActivitySummaryProgressStage.COMPLETED);
                 return toResponse(existing);
             }
         }
 
+        listener.onProgress(AiActivitySummaryProgressStage.COLLECTING);
         AiActivitySummaryReq summaryReq = new AiActivitySummaryReq();
         summaryReq.setPeriod(validated.period());
         summaryReq.setConversationId(validated.conversationId());
         AiActivitySummaryContext context = summaryService.summarize(userId, summaryReq);
+        listener.onProgress(AiActivitySummaryProgressStage.PREPARING);
         String userMessage = promptBuilder.buildUserMessage(context);
+        String contextJson = contextCodec.serialize(context);
         String agentCode = StringUtils.hasText(session.getAgentCode())
                 ? session.getAgentCode().trim() : DEFAULT_AGENT_CODE;
         if (isEmpty(context)) {
@@ -78,16 +107,20 @@ public class AiActivitySummaryGenerateServiceImpl implements AiActivitySummaryGe
                     .period(validated.period())
                     .userMessage(userMessage)
                     .content(EMPTY_CONTENT)
+                    .activitySummary(context)
                     .agentCode(agentCode)
                     .build();
         }
 
         AiActivitySummaryGenerationClaim claim = taskService.claim(
-                userId, validated.conversationId(), validated.idempotencyKey(), validated.period(), userMessage);
+                userId, validated.conversationId(), validated.idempotencyKey(), validated.period(), userMessage, contextJson);
         AiActivitySummaryGenerationEntity task = claim.getTask();
+        AiActivitySummaryContext taskContext = contextCodec.deserialize(task.getContextJson());
         if (claim.isModelGenerationRequired()) {
             try {
-                AiActivitySummaryModelResult modelResult = modelService.generate(userId, agentCode, context, userMessage);
+                listener.onProgress(AiActivitySummaryProgressStage.GENERATING);
+                AiActivitySummaryModelResult modelResult = modelService.generate(
+                        userId, agentCode, taskContext, task.getUserMessage());
                 task = taskService.markGenerated(task.getId(), modelResult);
             } catch (RuntimeException exception) {
                 taskService.markFailed(task.getId(), exception.getMessage());
@@ -95,9 +128,13 @@ public class AiActivitySummaryGenerateServiceImpl implements AiActivitySummaryGe
             }
         }
         if (AiActivitySummaryGenerationStatus.SUCCESS.name().equals(task.getStatus())) {
+            listener.onProgress(AiActivitySummaryProgressStage.COMPLETED);
             return toResponse(task);
         }
-        return persistenceService.persist(task);
+        listener.onProgress(AiActivitySummaryProgressStage.SAVING);
+        AiActivitySummaryGenerateResp response = persistenceService.persist(task);
+        listener.onProgress(AiActivitySummaryProgressStage.COMPLETED);
+        return response;
     }
 
     private ValidatedRequest validate(Long userId, AiActivitySummaryGenerateReq req) {
@@ -145,6 +182,7 @@ public class AiActivitySummaryGenerateServiceImpl implements AiActivitySummaryGe
                 .period(task.getPeriod())
                 .userMessage(task.getUserMessage())
                 .content(task.getContent())
+                .activitySummary(contextCodec.deserialize(task.getContextJson()))
                 .modelName(task.getModelName())
                 .agentCode(task.getAgentCode())
                 .agentName(task.getAgentName())
